@@ -38,6 +38,8 @@ class MonsterInstance extends FigureState {
   late final String gfx;
   late TurnsState turnState = TurnsState.notDone;
 
+  int woundApplied = 0;
+
   bool isTurnState(TurnsState state) {
     return state == turnState;
   }
