@@ -1220,6 +1220,9 @@ class GameMethods {
         } else {
           figure.conditionsAddedThisTurn.value.clear();
         }
+      } else if (figure.conditionsAddedThisTurn.value
+          .contains(Condition.wound)) {
+        figure.health.value++;
       } else {
         figure.conditionsAddedThisTurn.value.clear();
       }

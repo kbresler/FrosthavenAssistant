@@ -29,9 +29,9 @@ class Character extends ListItemData {
           if (item == Condition.wound) {
             //Future.delayed(const Duration(milliseconds: 600), () {
             gameState.action(ChangeHealthCommand(-1, id, id));
-            GameMethods.setToastMessage("Wound applied to $id!");
+            GameMethods.setToastMessage('Wound applied to $id!');
             Future.delayed(const Duration(milliseconds: 5000), () {
-              GameMethods.setToastMessage("");
+              GameMethods.setToastMessage('');
             });
           }
         }

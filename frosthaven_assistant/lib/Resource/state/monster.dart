@@ -32,47 +32,40 @@ class Monster extends ListItemData {
   //note: this is only used for the no standee tracking setting
   bool isActive = false;
 
-  // @override
-  // bool isTurnState(TurnsState state) {
-  //   return false;
-  // }
+  int? _lastNbr;
 
   @override
   void setTurnState(TurnsState state, {bool init = false}) {
     if (init) {
       super.setTurnState(state);
+      return;
     }
+
     GameState gameState = getIt<GameState>();
-    if (!init && isTurnState(TurnsState.notDone)) {
-      for (var instance in monsterInstances.value) {
-        if (state == TurnsState.current &&
-            instance.isTurnState(TurnsState.notDone)) {
+    for (var instance in monsterInstances.value) {
+      if (state == TurnsState.current) {
+        if (instance.isTurnState(TurnsState.notDone)) {
           if (instance.conditions.value.contains(Condition.wound)) {
             gameState.action(ChangeHealthCommand(-1, instance.getId(), id));
+            instance.woundApplied++;
             GameMethods.setToastMessage(
-                "Wound applied to $id ${instance.standeeNr}!");
+                'Wound applied to $id ${instance.standeeNr}!');
             Future.delayed(const Duration(milliseconds: 5000), () {
-              GameMethods.setToastMessage("");
+              GameMethods.setToastMessage('');
             });
           }
-
-          if (instance.conditions.value.contains(Condition.stun)) {
-            instance.turnState = TurnsState.done;
-            continue;
-          }
-
-          instance.turnState = state;
-          break;
+        }
+        if (instance.conditions.value.contains(Condition.stun)) {
+          instance.turnState = TurnsState.done;
+          continue;
         }
 
         instance.turnState = state;
+        _lastNbr = instance.standeeNr;
+        break;
       }
-    }
 
-    if (state == TurnsState.notDone) {
-      for (var instance in monsterInstances.value) {
-        instance.turnState = state;
-      }
+      instance.turnState = state;
     }
 
     super.setTurnState(state);

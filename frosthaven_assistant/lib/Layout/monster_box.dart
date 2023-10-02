@@ -124,6 +124,7 @@ class MonsterBoxState extends State<MonsterBox> {
     );
 
     bool ownerIsCurrent = true;
+    bool instanceIsDone = data.isTurnState(TurnsState.done);
     bool ownerIsDone = false;
     for (var item in getIt<GameState>().currentList) {
       if (item.id == widget.ownerId) {
@@ -134,6 +135,12 @@ class MonsterBoxState extends State<MonsterBox> {
         break;
       }
     }
+
+    bool setGreyScale =
+        ((data.roundSummoned == getIt<GameState>().round.value &&
+                ownerIsCurrent) ||
+            ownerIsDone ||
+            instanceIsDone);
 
     return Container(
         padding: EdgeInsets.zero,
@@ -147,12 +154,9 @@ class MonsterBoxState extends State<MonsterBox> {
             borderRadius: BorderRadius.circular(2)),
         child: ColorFiltered(
             //gray out if summoned this turn and it's still the character's/monster's turn
-            colorFilter:
-                ((data.roundSummoned == getIt<GameState>().round.value &&
-                            ownerIsCurrent) ||
-                        ownerIsDone)
-                    ? ColorFilter.matrix(grayScale)
-                    : ColorFilter.matrix(identity),
+            colorFilter: setGreyScale
+                ? ColorFilter.matrix(grayScale)
+                : ColorFilter.matrix(identity),
             child: Container(
                 padding: EdgeInsets.zero,
                 height: 30 * scale,
