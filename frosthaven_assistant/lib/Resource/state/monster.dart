@@ -2,6 +2,7 @@ import 'package:flutter/widgets.dart';
 
 import '../../Model/monster.dart';
 import '../../services/service_locator.dart';
+import '../commands/change_stat_commands/change_health_command.dart';
 import '../enums.dart';
 import 'game_state.dart';
 import 'list_item_data.dart';
@@ -30,6 +31,52 @@ class Monster extends ListItemData {
   bool isAlly;
   //note: this is only used for the no standee tracking setting
   bool isActive = false;
+
+  // @override
+  // bool isTurnState(TurnsState state) {
+  //   return false;
+  // }
+
+  @override
+  void setTurnState(TurnsState state, {bool init = false}) {
+    if (init) {
+      super.setTurnState(state);
+    }
+    GameState gameState = getIt<GameState>();
+    if (!init && isTurnState(TurnsState.notDone)) {
+      for (var instance in monsterInstances.value) {
+        if (state == TurnsState.current &&
+            instance.isTurnState(TurnsState.notDone)) {
+          if (instance.conditions.value.contains(Condition.wound)) {
+            gameState.action(ChangeHealthCommand(-1, instance.getId(), id));
+            GameMethods.setToastMessage(
+                "Wound applied to $id ${instance.standeeNr}!");
+            Future.delayed(const Duration(milliseconds: 5000), () {
+              GameMethods.setToastMessage("");
+            });
+          }
+
+          if (instance.conditions.value.contains(Condition.stun)) {
+            instance.turnState = TurnsState.done;
+            continue;
+          }
+
+          instance.turnState = state;
+          break;
+        }
+
+        instance.turnState = state;
+      }
+    }
+
+    if (state == TurnsState.notDone) {
+      for (var instance in monsterInstances.value) {
+        instance.turnState = state;
+      }
+    }
+
+    super.setTurnState(state);
+  }
 
   bool hasElites() {
     for (var instance in monsterInstances.value) {
@@ -61,7 +108,7 @@ class Monster extends ListItemData {
   String toString() {
     return '{'
         '"id": "$id", '
-        '"turnState": ${turnState.index}, '
+        '"turnState": ${getTurnState().index}, '
         '"isActive": $isActive, '
         '"type": "${type.name}", '
         '"monsterInstances": ${monsterInstances.value.toString()}, '
@@ -73,7 +120,7 @@ class Monster extends ListItemData {
 
   Monster.fromJson(Map<String, dynamic> json) : isAlly = false {
     id = json['id'];
-    turnState = TurnsState.values[json['turnState']];
+    setTurnState(TurnsState.values[json['turnState']], init: true);
     level.value = json['level'];
     if (json.containsKey("isAlly")) {
       isAlly = json['isAlly'];

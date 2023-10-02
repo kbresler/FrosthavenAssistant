@@ -25,7 +25,7 @@ void main() {
   _enablePlatformOverrideForDesktop();
 
   if (Platform.isWindows || Platform.isLinux || Platform.isMacOS) {
-    setWindowTitle('X-haven Assistant');
+    setWindowTitle('X-haven Assistant (Swerski\'s Superfans Edition)');
     if (!Platform.isMacOS) {
       windowManager.setMinimumSize(const Size(400, 600));
     }
@@ -66,9 +66,9 @@ class MyApp extends StatelessWidget {
       //debugShowMaterialGrid: true,
       checkerboardOffscreenLayers: false,
       //showPerformanceOverlay: true,
-      title: 'X-haven Assistant',
+      title: 'X-haven Assistant (Swerski Edition)',
       theme: ThemeSwitcher.of(context).themeData,
-      home: const MyHomePage(title: 'X-haven Assistant'),
+      home: const MyHomePage(title: 'X-haven Assistant (Swerski Edition)'),
 
       /* builder: (context, child) => ResponsiveWrapper.builder(
 

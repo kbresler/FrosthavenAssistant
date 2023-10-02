@@ -153,7 +153,8 @@ class LineBuilder {
         children: lines);
   }
 
-  static Widget createLines(List<String> strings,
+  static Widget createLines(
+      List<String> strings,
       final bool left,
       final bool applyStats,
       final bool applyAll,
@@ -215,12 +216,12 @@ class LineBuilder {
         fontFamily: 'Majalla',
         color: left ? Colors.black : Colors.white,
         fontSize: ((alignment == CrossAxisAlignment.center
-            ? frosthavenStyle
-            ? 9.52 //7.52 is closer to physical size, but too hard to see on smaller screens
-            : 8.8
-            : frosthavenStyle
-            ? 8.8
-            : 9.9) *
+                ? frosthavenStyle
+                    ? 9.52 //7.52 is closer to physical size, but too hard to see on smaller screens
+                    : 8.8
+                : frosthavenStyle
+                    ? 8.8
+                    : 9.9) *
             scale), //.floorToDouble()+0.5, //not sur eif flooring the mid scale is realy the best option. or onl yhappens tp work on my android
         //sizes are larger on stat cards
         height: (alignment == CrossAxisAlignment.center
@@ -621,7 +622,6 @@ class LineBuilder {
           addText = false;
         }
         if (line[i] == '%') {
-
           if (isIconPart) {
             //create token part
             String iconToken = line.substring(partStartIndex, i);
@@ -704,8 +704,8 @@ class LineBuilder {
                   iconToken, styleToUse.fontSize!, frosthavenStyle);
               if (frosthavenStyle &&
                   styleToUse == midStyle &&
-                  !FrosthavenConverter.shouldOverflow(true, iconToken, false)) {
-              }
+                  !FrosthavenConverter.shouldOverflow(
+                      true, iconToken, false)) {}
               if (addText) {
                 String? iconTokenText = _tokens[iconToken];
                 if (frosthavenStyle) {
@@ -718,7 +718,7 @@ class LineBuilder {
                           line.contains('shield')) &&
                       (monster.isActive ||
                           monster.monsterInstances.value.isNotEmpty);
-                  if (monster.turnState == TurnsState.current) {
+                  if (monster.isTurnState(TurnsState.current)) {
                     if (line.contains("Advantage")) {
                       shouldAnimate = true;
                     }
@@ -841,7 +841,7 @@ class LineBuilder {
               line.contains('retaliate') ||
               line.contains('shield')) &&
           (monster.isActive || monster.monsterInstances.value.isNotEmpty);
-      if (monster.turnState == TurnsState.current) {
+      if (monster.isTurnState(TurnsState.current)) {
         if (line.contains("Advantage")) {
           shouldAnimate = true;
         }

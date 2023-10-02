@@ -29,6 +29,7 @@ class Settings {
   final randomStandees = ValueNotifier<bool>(false);
   final noCalculation = ValueNotifier<bool>(false);
   final expireConditions = ValueNotifier<bool>(false);
+  final applyConditions = ValueNotifier<bool>(false);
   final hideLootDeck = ValueNotifier<bool>(false);
   final shimmer = ValueNotifier<bool>(true);
   final showScenarioNames = ValueNotifier<bool>(true);
@@ -202,6 +203,9 @@ class Settings {
       if (data["expireConditions"] != null) {
         expireConditions.value = data["expireConditions"];
       }
+      if (data["applyConditions"] != null) {
+        applyConditions.value = data["applyConditions"];
+      }
       if (data["lastKnownConnection"] != null) {
         lastKnownConnection = data["lastKnownConnection"];
       }
@@ -286,6 +290,7 @@ class Settings {
         '"randomStandees": ${randomStandees.value}, '
         '"noCalculation": ${noCalculation.value}, '
         '"expireConditions": ${expireConditions.value}, '
+        '"applyConditions": ${applyConditions.value}, '
         '"hideLootDeck": ${hideLootDeck.value}, '
         '"style": ${style.value.index}, '
         '"darkMode": ${darkMode.value}, '

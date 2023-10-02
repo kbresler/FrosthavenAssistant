@@ -8,7 +8,7 @@ class SetInitCommand extends Command {
   final String _characterId;
   final int _init;
 
-  SetInitCommand(this._characterId, this._init) {}
+  SetInitCommand(this._characterId, this._init);
 
   @override
   void execute() {

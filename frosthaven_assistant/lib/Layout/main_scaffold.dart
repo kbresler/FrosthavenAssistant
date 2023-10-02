@@ -42,7 +42,7 @@ Widget createMainScaffold(BuildContext context) {
                                 context, getIt<GameState>().toastMessage.value);
                             //getIt<GameState>().toastMessage.value = "";
                           } else {
-                            //ScaffoldMessenger.of(context).hideCurrentSnackBar();
+                            ScaffoldMessenger.of(context).hideCurrentSnackBar();
                           }
                         });
 
@@ -75,7 +75,9 @@ Widget createMainScaffold(BuildContext context) {
                                 sectionWidth -=
                                     94 * barScale; //width of loot deck
                               }
-                              if ((!modFitsOnBar || GameMethods.shouldShowAlliesDeck()) && getIt<Settings>().showAmdDeck.value) {
+                              if ((!modFitsOnBar ||
+                                      GameMethods.shouldShowAlliesDeck()) &&
+                                  getIt<Settings>().showAmdDeck.value) {
                                 sectionWidth -= 153 * barScale; //width of amd
                               }
 
@@ -135,10 +137,14 @@ Widget createMainScaffold(BuildContext context) {
                                               child: const SectionList(),
                                             ),
                                           Column(children: [
-                                            if (GameMethods.shouldShowAlliesDeck())
+                                            if (GameMethods
+                                                .shouldShowAlliesDeck())
                                               const ModifierDeckWidget(
                                                   name: "allies"),
-                                            if (!modFitsOnBar && getIt<Settings>().showAmdDeck.value)
+                                            if (!modFitsOnBar &&
+                                                getIt<Settings>()
+                                                    .showAmdDeck
+                                                    .value)
                                               Container(
                                                   margin: EdgeInsets.only(
                                                     top: 4 * barScale,

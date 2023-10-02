@@ -112,6 +112,11 @@ class MonsterBoxState extends State<MonsterBox> {
       borderColor = null;
     }
 
+    Color? activeColor = Colors.transparent;
+    if (data.turnState == TurnsState.current) {
+      activeColor = Colors.lightGreenAccent;
+    }
+
     var shadow = Shadow(
       offset: Offset(0.4 * scale, 0.4 * scale),
       color: Colors.black87,
@@ -119,152 +124,172 @@ class MonsterBoxState extends State<MonsterBox> {
     );
 
     bool ownerIsCurrent = true;
+    bool ownerIsDone = false;
     for (var item in getIt<GameState>().currentList) {
       if (item.id == widget.ownerId) {
-        if (item.turnState == TurnsState.done) {
+        if (item.isTurnState(TurnsState.done)) {
           ownerIsCurrent = false;
+          ownerIsDone = true;
         }
         break;
       }
     }
 
-    return ColorFiltered(
-        //gray out if summoned this turn and it's still the character's/monster's turn
-        colorFilter: (data.roundSummoned == getIt<GameState>().round.value &&
-                ownerIsCurrent)
-            ? ColorFilter.matrix(grayScale)
-            : ColorFilter.matrix(identity),
-        child: Container(
-            padding: EdgeInsets.zero,
-            height: 30 * scale,
-            width: width,
-            decoration: BoxDecoration(
-              color: Color(int.parse("7A000000", radix: 16)),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black45,
-                  blurRadius: 4 * scale,
-                  offset: Offset(2 * scale, 4 * scale), // Shadow position
-                ),
-              ],
-            ),
-            //color: Color(int.parse("7A000000", radix: 16)),
-            //black with some opacity
-            child: Stack(alignment: Alignment.centerLeft, children: [
-              Image(
+    return Container(
+        padding: EdgeInsets.zero,
+        height: 30 * scale,
+        width: width,
+        decoration: BoxDecoration(
+            border: Border.all(
+                color: activeColor,
+                width: 4,
+                strokeAlign: BorderSide.strokeAlignOutside),
+            borderRadius: BorderRadius.circular(2)),
+        child: ColorFiltered(
+            //gray out if summoned this turn and it's still the character's/monster's turn
+            colorFilter:
+                ((data.roundSummoned == getIt<GameState>().round.value &&
+                            ownerIsCurrent) ||
+                        ownerIsDone)
+                    ? ColorFilter.matrix(grayScale)
+                    : ColorFilter.matrix(identity),
+            child: Container(
+                padding: EdgeInsets.zero,
                 height: 30 * scale,
-                width: 47 * scale,
-                fit: BoxFit.fill,
-                color: borderColor,
-                colorBlendMode: blendMode,
-                // (works but not great),// BlendMode.modulate/color (good for boss), //BlendMode.saturation,(not good for bosss)
-                //scale up disregarding aspect ratio
-                image: const AssetImage("assets/images/psd/monster-box.png"),
-              ),
-              Container(
-                margin: EdgeInsets.only(
-                    left: 3 * scale, top: 3 * scale, bottom: 2 * scale),
-                child: Image(
-                  //fit: BoxFit.contain,
-                  height: 100 * scale,
-                  width: 17 * scale,
-                  fit: BoxFit.cover,
-                  filterQuality: FilterQuality.medium,
-                  image: AssetImage(imagePath),
+                width: width,
+                decoration: BoxDecoration(
+                  color: Color(int.parse("7A000000", radix: 16)),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black45,
+                      blurRadius: 4 * scale,
+                      offset: Offset(2 * scale, 4 * scale), // Shadow position
+                    ),
+                  ],
                 ),
-              ),
-              Positioned(
-                width: 22 * scale,
-                //baked in edge insets to line up with picture
-                top: 1 * scale,
-                child: Text(
-                  textAlign: TextAlign.center,
-                  standeeNr,
-                  style: TextStyle(
-                      color: color, fontSize: 20 * scale, shadows: [shadow]),
-                ),
-              ),
-              Positioned(
-                left: data.health.value > 99 ? 22 * scale : 23 * scale,
-                //width: width-20*scale,
-                top: 0,
+                //color: Color(int.parse("7A000000", radix: 16)),
+                //black with some opacity
+                child: Stack(alignment: Alignment.centerLeft, children: [
+                  Image(
+                    height: 30 * scale,
+                    width: 47 * scale,
+                    fit: BoxFit.fill,
+                    color: borderColor,
+                    colorBlendMode: blendMode,
+                    // (works but not great),// BlendMode.modulate/color (good for boss), //BlendMode.saturation,(not good for bosss)
+                    //scale up disregarding aspect ratio
+                    image:
+                        const AssetImage("assets/images/psd/monster-box.png"),
+                  ),
+                  Container(
+                    margin: EdgeInsets.only(
+                        left: 3 * scale, top: 3 * scale, bottom: 2 * scale),
+                    child: Image(
+                      //fit: BoxFit.contain,
+                      height: 100 * scale,
+                      width: 17 * scale,
+                      fit: BoxFit.cover,
+                      filterQuality: FilterQuality.medium,
+                      image: AssetImage(imagePath),
+                    ),
+                  ),
+                  Positioned(
+                    width: 22 * scale,
+                    //baked in edge insets to line up with picture
+                    top: 1 * scale,
+                    child: Text(
+                      textAlign: TextAlign.center,
+                      standeeNr,
+                      style: TextStyle(
+                          color: color,
+                          fontSize: 20 * scale,
+                          shadows: [shadow]),
+                    ),
+                  ),
+                  Positioned(
+                    left: data.health.value > 99 ? 22 * scale : 23 * scale,
+                    //width: width-20*scale,
+                    top: 0,
 
-                child: Container(
-                    padding: EdgeInsets.zero,
-                    margin: EdgeInsets.zero,
-                    child: Row(children: [
-                      Column(children: [
-                        Image(
-                          //fit: BoxFit.contain,
-                          color: Colors.red,
-                          height: 7 * scale,
-                          image: const AssetImage("assets/images/blood.png"),
-                        ),
-                        Container(
-                          margin: EdgeInsets.only(bottom: 2 * scale),
-                          width: data.health.value > 99
-                              ? 21 * scale
-                              : 16.8 * scale,
-                          alignment: Alignment.center,
-                          child: Text(
-                            textAlign: TextAlign.end,
-                            "${data.health.value}",
-                            style: TextStyle(
-                                height: 1,
-                                color: Colors.white,
-                                fontSize: 16 * scale,
-                                shadows: [shadow]),
+                    child: Container(
+                        padding: EdgeInsets.zero,
+                        margin: EdgeInsets.zero,
+                        child: Row(children: [
+                          Column(children: [
+                            Image(
+                              //fit: BoxFit.contain,
+                              color: Colors.red,
+                              height: 7 * scale,
+                              image:
+                                  const AssetImage("assets/images/blood.png"),
+                            ),
+                            Container(
+                              margin: EdgeInsets.only(bottom: 2 * scale),
+                              width: data.health.value > 99
+                                  ? 21 * scale
+                                  : 16.8 * scale,
+                              alignment: Alignment.center,
+                              child: Text(
+                                textAlign: TextAlign.end,
+                                "${data.health.value}",
+                                style: TextStyle(
+                                    height: 1,
+                                    color: Colors.white,
+                                    fontSize: 16 * scale,
+                                    shadows: [shadow]),
+                              ),
+                            )
+                          ]),
+                          SizedBox(
+                            width: data.health.value > 99
+                                ? 4.5 * scale
+                                : 6.5 * scale,
                           ),
-                        )
-                      ]),
-                      SizedBox(
-                        width:
-                            data.health.value > 99 ? 4.5 * scale : 6.5 * scale,
-                      ),
-                      ValueListenableBuilder<List<Condition>>(
-                          valueListenable: data.conditions,
+                          ValueListenableBuilder<List<Condition>>(
+                              valueListenable: data.conditions,
+                              builder: (context, value, child) {
+                                return SizedBox(
+                                    height: 30 * scale,
+                                    child: Wrap(
+                                      spacing: 0,
+                                      runSpacing: 0,
+                                      direction: Axis.vertical,
+                                      alignment: WrapAlignment.center,
+                                      crossAxisAlignment:
+                                          WrapCrossAlignment.center,
+                                      children: createConditionList(scale),
+                                    ));
+                              }),
+                        ])),
+                  ),
+                  Container(
+                      //the hp bar
+                      margin: EdgeInsets.only(
+                          bottom: 2.5 * scale,
+                          left: 2.5 * scale,
+                          right: 2.7 * scale),
+                      alignment: Alignment.bottomCenter,
+                      width: 42 * scale,
+                      child: ValueListenableBuilder<int>(
+                          valueListenable: data.maxHealth,
                           builder: (context, value, child) {
-                            return SizedBox(
-                                height: 30 * scale,
-                                child: Wrap(
-                                  spacing: 0,
-                                  runSpacing: 0,
-                                  direction: Axis.vertical,
-                                  alignment: WrapAlignment.center,
-                                  crossAxisAlignment: WrapCrossAlignment.center,
-                                  children: createConditionList(scale),
-                                ));
-                          }),
-                    ])),
-              ),
-              Container(
-                  //the hp bar
-                  margin: EdgeInsets.only(
-                      bottom: 2.5 * scale,
-                      left: 2.5 * scale,
-                      right: 2.7 * scale),
-                  alignment: Alignment.bottomCenter,
-                  width: 42 * scale,
-                  child: ValueListenableBuilder<int>(
-                      valueListenable: data.maxHealth,
-                      builder: (context, value, child) {
-                        return FAProgressBar(
-                          currentValue: data.health.value.toDouble(),
-                          maxValue: data.maxHealth.value.toDouble(),
-                          size: 4.0 * scale,
-                          direction: Axis.horizontal,
-                          borderRadius: BorderRadius.circular(0),
-                          border: Border.all(
-                            color: Colors.black,
-                            width: 0.5 * scale,
-                          ),
-                          backgroundColor: Colors.black,
-                          progressColor: Colors.red,
-                          changeColorValue: (data.maxHealth.value).toInt(),
-                          changeProgressColor: Colors.green,
-                        );
-                      }))
-            ])));
+                            return FAProgressBar(
+                              currentValue: data.health.value.toDouble(),
+                              maxValue: data.maxHealth.value.toDouble(),
+                              size: 4.0 * scale,
+                              direction: Axis.horizontal,
+                              borderRadius: BorderRadius.circular(0),
+                              border: Border.all(
+                                color: Colors.black,
+                                width: 0.5 * scale,
+                              ),
+                              backgroundColor: Colors.black,
+                              progressColor: Colors.red,
+                              changeColorValue: (data.maxHealth.value).toInt(),
+                              changeProgressColor: Colors.green,
+                            );
+                          }))
+                ]))));
   }
 
   @override

@@ -103,7 +103,9 @@ Drawer createMainMenu(BuildContext context) {
                 child: Stack(
                   children: [
                     Positioned(
-                        right: 6, bottom: 0, child: Text("Version 1.8.5"))
+                        right: 6,
+                        bottom: 0,
+                        child: Text("Version 1.8.6.312-swerski"))
                   ],
                 ),
               ),
@@ -125,12 +127,12 @@ Drawer createMainMenu(BuildContext context) {
               ),
               const Divider(),
               ListTile(
-                      title: const Text('Set Scenario'),
-                      onTap: () {
-                        Navigator.pop(context);
-                        openDialog(context, const SelectScenarioMenu());
-                      },
-                    ),
+                title: const Text('Set Scenario'),
+                onTap: () {
+                  Navigator.pop(context);
+                  openDialog(context, const SelectScenarioMenu());
+                },
+              ),
               ListTile(
                 title: const Text('Add Section'),
                 enabled: true,
@@ -161,7 +163,7 @@ Drawer createMainMenu(BuildContext context) {
                   openDialog(context, const SetLevelMenu());
                 },
               ),
-              if(gameState.currentCampaign.value == "Frosthaven")
+              if (gameState.currentCampaign.value == "Frosthaven")
                 ListTile(
                   title: const Text('Loot Deck Menu'),
                   onTap: () {
@@ -184,7 +186,9 @@ Drawer createMainMenu(BuildContext context) {
                   openDialog(context, const RemoveMonsterMenu());
                 },
               ),
-              if (gameState.showAllyDeck.value == false && !GameMethods.shouldShowAlliesDeck() && settings.showAmdDeck.value)
+              if (gameState.showAllyDeck.value == false &&
+                  !GameMethods.shouldShowAlliesDeck() &&
+                  settings.showAmdDeck.value)
                 ListTile(
                   title: const Text('Show Ally Attack Modifier Deck'),
                   onTap: () {
@@ -286,6 +290,16 @@ Drawer createMainMenu(BuildContext context) {
                       },
                     )
                   : Container(),
+              const Expanded(
+                  child: SizedBox(
+                height: 20,
+              )),
+              const Align(
+                  alignment: Alignment.bottomCenter,
+                  child: Image(
+                    image: AssetImage("assets/images/swerski.png"),
+                    fit: BoxFit.fitWidth,
+                  )),
             ]);
       },
     ),

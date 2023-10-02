@@ -1,3 +1,5 @@
+// ignore_for_file: invalid_return_type_for_catch_error
+
 import 'dart:convert';
 import 'dart:developer';
 import 'dart:io';
@@ -92,9 +94,7 @@ class Server {
       } else {
         getIt<Network>().networkMessage.value = 'Server Offline';
       }
-      _serverSocket!.close().catchError((error) =>
-        log(error.toString())
-      );
+      _serverSocket!.close().catchError((error) => log(error.toString()));
 
       _connection.removeAll();
     }
@@ -143,8 +143,7 @@ class Server {
                 String description = messageParts2[0];
                 String data = messageParts2[1];
 
-                log(
-                    'Server Receive Data, index: $indexString, description:$description');
+                log('Server Receive Data, index: $indexString, description:$description');
 
                 int newIndex = int.parse(indexString);
                 if (newIndex > _gameState.commandDescriptions.length) {
@@ -170,8 +169,7 @@ class Server {
                   //client.write('your gameState changes received by server');
                 } else {
                   //getIt<Network>().networkMessage.value = "index mismatch: ignoring incoming message";
-                  log(
-                      'Got same or lower index. ignoring: received index: $newIndex current index ${_gameState.commandIndex.value}');
+                  log('Got same or lower index. ignoring: received index: $newIndex current index ${_gameState.commandIndex.value}');
 
                   //overwrite client state with current server state.
                   sendToOnly(
@@ -204,8 +202,7 @@ class Server {
                       print("?");
                     }
                   }
-                  log(
-                      'Server sends init response: "S3nD:Index:${_gameState.commandIndex.value}Description:$commandDescription');
+                  log('Server sends init response: "S3nD:Index:${_gameState.commandIndex.value}Description:$commandDescription');
                   sendToOnly(
                       "Index:${_gameState.commandIndex.value}Description:${commandDescription}GameState:${_gameState.gameSaveStates.last!.getState()}",
                       client);

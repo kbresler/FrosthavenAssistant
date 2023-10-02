@@ -1,4 +1,3 @@
-
 import 'package:flutter/material.dart';
 
 import 'package:frosthaven_assistant/Layout/monster_ability_card.dart';
@@ -58,23 +57,22 @@ class MonsterWidgetState extends State<MonsterWidget> {
     final generatedChildren = List<Widget>.generate(
         widget.data.monsterInstances.value.length,
         (index) => AnimatedSize(
-              //not really needed now
-              //TODO: try change to AnimatedContainer, and make sure to update the width on death (same time as death animation)
-              key: Key(widget.data.monsterInstances.value[index].standeeNr
-                  .toString()),
-              duration: const Duration(milliseconds: 300),
-              child: MonsterBox(
-                  key: Key(widget.data.monsterInstances.value[index].standeeNr
-                      .toString()),
-                  figureId: widget.data.monsterInstances.value[index].name +
-                      widget.data.monsterInstances.value[index].gfx +
-                      widget.data.monsterInstances.value[index].standeeNr
-                          .toString(),
-                  ownerId: widget.data.id,
-                  displayStartAnimation: displayStartAnimation,
-                  blockInput: false,
-                  scale: scale),
-            ));
+            //not really needed now
+            //TODO: try change to AnimatedContainer, and make sure to update the width on death (same time as death animation)
+            key: Key(
+                widget.data.monsterInstances.value[index].standeeNr.toString()),
+            duration: const Duration(milliseconds: 300),
+            child: MonsterBox(
+                key: Key(widget.data.monsterInstances.value[index].standeeNr
+                    .toString()),
+                figureId: widget.data.monsterInstances.value[index].name +
+                    widget.data.monsterInstances.value[index].gfx +
+                    widget.data.monsterInstances.value[index].standeeNr
+                        .toString(),
+                ownerId: widget.data.id,
+                displayStartAnimation: displayStartAnimation,
+                blockInput: false,
+                scale: scale)));
     lastList = widget.data.monsterInstances.value;
     return Wrap(
       runSpacing: 2.0 * scale,
@@ -89,8 +87,8 @@ class MonsterWidgetState extends State<MonsterWidget> {
       Container(
           margin: EdgeInsets.only(bottom: 4 * scale, top: 4 * scale),
           child: PhysicalShape(
-            color: widget.data.turnState == TurnsState.current
-                ? Colors.tealAccent
+            color: widget.data.isTurnState(TurnsState.current)
+                ? Colors.greenAccent
                 : Colors.transparent,
             //or bleu if current
             shadowColor: Colors.black,
@@ -113,8 +111,8 @@ class MonsterWidgetState extends State<MonsterWidget> {
           alignment: Alignment.bottomCenter,
           margin: EdgeInsets.only(bottom: frosthavenStyle ? 2 * scale : 0),
           child: Text(
-            textAlign: TextAlign.center,
             widget.data.type.display,
+            textAlign: TextAlign.center,
             style: TextStyle(
                 fontFamily: frosthavenStyle ? "GermaniaOne" : 'Pirata',
                 color: Colors.white,
@@ -141,7 +139,7 @@ class MonsterWidgetState extends State<MonsterWidget> {
             ColorFiltered(
                 colorFilter: (widget.data.monsterInstances.value.isNotEmpty ||
                             widget.data.isActive) &&
-                        (widget.data.turnState != TurnsState.done ||
+                        (widget.data.getTurnState() != TurnsState.done ||
                             getIt<GameState>().roundState.value ==
                                 RoundState.chooseInitiative)
                     ? ColorFilter.matrix(identity)

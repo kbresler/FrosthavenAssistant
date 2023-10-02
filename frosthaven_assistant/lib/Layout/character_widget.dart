@@ -148,22 +148,21 @@ class CharacterWidgetState extends State<CharacterWidget> {
     final generatedChildren = List<Widget>.generate(
         character.characterState.summonList.value.length,
         (index) => AnimatedSize(
-              //not really needed now
-              key: Key(index.toString()),
-              duration: const Duration(milliseconds: 300),
-              child: MonsterBox(
-                  key: Key(
-                      character.characterState.summonList.value[index].getId()),
-                  figureId: character
-                          .characterState.summonList.value[index].name +
-                      character.characterState.summonList.value[index].gfx +
-                      character.characterState.summonList.value[index].standeeNr
-                          .toString(),
-                  ownerId: character.id,
-                  displayStartAnimation: displayStartAnimation,
-                  blockInput: false,
-                  scale: scale),
-            ));
+            //not really needed now
+            key: Key(index.toString()),
+            duration: const Duration(milliseconds: 300),
+            child: MonsterBox(
+                key: Key(
+                    character.characterState.summonList.value[index].getId()),
+                figureId: character
+                        .characterState.summonList.value[index].name +
+                    character.characterState.summonList.value[index].gfx +
+                    character.characterState.summonList.value[index].standeeNr
+                        .toString(),
+                ownerId: character.id,
+                displayStartAnimation: displayStartAnimation,
+                blockInput: false,
+                scale: scale)));
     lastList = character.characterState.summonList.value;
     return Wrap(
       runSpacing: 2.0 * scale,
@@ -370,7 +369,7 @@ class CharacterWidgetState extends State<CharacterWidget> {
         figureId: widget.characterId,
         ownerId: widget.characterId,
         child: PhysicalShape(
-            color: character.turnState == TurnsState.current
+            color: character.isTurnState(TurnsState.current)
                 ? Colors.tealAccent
                 : Colors.transparent,
             shadowColor: Colors.black,
@@ -685,7 +684,7 @@ class CharacterWidgetState extends State<CharacterWidget> {
             valueListenable: getIt<GameState>().updateList,
             builder: (context, value, child) {
               bool notGrayScale = character.characterState.health.value != 0 &&
-                  (character.turnState != TurnsState.done ||
+                  (character.getTurnState() != TurnsState.done ||
                       getIt<GameState>().roundState.value ==
                           RoundState.chooseInitiative);
               double scale = getScaleByReference(context);

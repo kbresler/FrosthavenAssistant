@@ -47,10 +47,10 @@ class NextRoundCommand extends Command {
     GameMethods.shuffleDecksIfNeeded();
     GameMethods.updateElements();
     GameMethods.setRoundState(RoundState.chooseInitiative);
-    if (_gameState.currentList.last.turnState != TurnsState.done) {
+    if (_gameState.currentList.last.getTurnState() != TurnsState.done) {
       GameMethods.setTurnDone(_gameState.currentList.length - 1);
     }
-    if (_gameState.currentList.last.turnState != TurnsState.done) {
+    if (_gameState.currentList.last.getTurnState() != TurnsState.done) {
       GameMethods.setTurnDone(_gameState.currentList.length - 1);
     }
     GameMethods.clearTurnState(false);

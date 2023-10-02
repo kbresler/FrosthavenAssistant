@@ -1,3 +1,5 @@
+// ignore_for_file: prefer_final_fields
+
 library game_state;
 
 import 'package:built_collection/built_collection.dart';

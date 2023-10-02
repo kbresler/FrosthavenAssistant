@@ -36,6 +36,11 @@ class MonsterInstance extends FigureState {
   late MonsterType type;
   late final String name;
   late final String gfx;
+  late TurnsState turnState = TurnsState.notDone;
+
+  bool isTurnState(TurnsState state) {
+    return state == turnState;
+  }
 
   //summon stats
   late int move;

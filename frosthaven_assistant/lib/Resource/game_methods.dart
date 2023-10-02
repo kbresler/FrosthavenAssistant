@@ -218,7 +218,7 @@ class GameMethods {
     ListItemData? item;
     int currentTurnItemIndex = 0;
     for (int i = 0; i < newList.length; i++) {
-      if (newList[i].turnState == TurnsState.current) {
+      if (newList[i].isTurnState(TurnsState.current)) {
         currentTurnItemIndex = i;
       }
       if (newList[i].id == id) {
@@ -424,7 +424,8 @@ class GameMethods {
       } else {
         if (_gameState.currentCampaign.value == "Frosthaven") {
           //add loot deck for random scenarios
-          LootDeckModel? lootDeckModel = const LootDeckModel(2, 2, 2, 12, 1, 1, 1, 1, 1, 1, 0);
+          LootDeckModel? lootDeckModel =
+              const LootDeckModel(2, 2, 2, 12, 1, 1, 1, 1, 1, 1, 0);
           _gameState._lootDeck = LootDeck(lootDeckModel, _gameState.lootDeck);
         } else {
           _gameState._lootDeck = LootDeck.from(_gameState.lootDeck);
@@ -681,11 +682,11 @@ class GameMethods {
 
   static void returnLootCard(bool top) {
     var card = _gameState._lootDeck.discardPile.pop();
-      card.owner = "";
-      if(top) {
-        _gameState._lootDeck.drawPile.push(card);
-      } else {
-        _gameState._lootDeck.drawPile.getList().insert(0, card);
+    card.owner = "";
+    if (top) {
+      _gameState._lootDeck.drawPile.push(card);
+    } else {
+      _gameState._lootDeck.drawPile.getList().insert(0, card);
     }
   }
 
@@ -1187,10 +1188,10 @@ class GameMethods {
   }
 
   static bool shouldShowAlliesDeck() {
-    if (!getIt<Settings>().showAmdDeck.value ) {
+    if (!getIt<Settings>().showAmdDeck.value) {
       return false;
     }
-    if (_gameState.showAllyDeck.value ) {
+    if (_gameState.showAllyDeck.value) {
       return true;
     }
     for (var item in _gameState.currentList) {
@@ -1229,7 +1230,7 @@ class GameMethods {
 
   static void clearTurnState(bool clearLastTurnToo) {
     for (var item in _gameState.currentList) {
-      item.turnState = TurnsState.notDone;
+      item.setTurnState(TurnsState.notDone);
       if (item is Character) {
         clearTurnStateConditions(item.characterState, clearLastTurnToo);
         for (var instance in item.characterState.summonList.value) {
@@ -1254,6 +1255,17 @@ class GameMethods {
             condition == Condition.disarm ||
             condition == Condition.chill ||
             condition == Condition.impair) {
+      return true;
+    }
+    return false;
+  }
+
+  static bool isActionable(Condition condition) {
+    if (
+        //condition == Condition.bane || //don't remove bane because user need to remember to remove 10hp as well
+        condition == Condition.bane ||
+            condition == Condition.wound ||
+            condition == Condition.wound2) {
       return true;
     }
     return false;
@@ -1321,45 +1333,47 @@ class GameMethods {
 
   static void setTurnDone(int index) {
     for (int i = 0; i < index; i++) {
-      if (_gameState.currentList[i].turnState != TurnsState.done) {
-        _gameState.currentList[i].turnState = TurnsState.done;
+      if (_gameState.currentList[i].getTurnState() != TurnsState.done) {
+        _gameState.currentList[i].setTurnState(TurnsState.done);
         removeExpiringConditionsFromListItem(_gameState.currentList[i]);
       }
     }
     //if on index is NOT current then set to current else set to done
     int newIndex = index + 1;
-    if (_gameState.currentList[index].turnState == TurnsState.current) {
-      _gameState.currentList[index].turnState = TurnsState.done;
+    if (_gameState.currentList[index].isTurnState(TurnsState.current)) {
+      _gameState.currentList[index].setTurnState(TurnsState.done);
       removeExpiringConditionsFromListItem(_gameState.currentList[index]);
       //remove expiring conditions
     } else {
       newIndex = index;
     }
+
     for (; newIndex < _gameState.currentList.length; newIndex++) {
       ListItemData data = _gameState.currentList[newIndex];
       if (data is Monster) {
         if (data.monsterInstances.value.isNotEmpty || data.isActive) {
-          if (data.turnState == TurnsState.done) {
+          if (data.isTurnState(TurnsState.done)) {
             reapplyConditionsFromListItem(data);
           }
-          data.turnState = TurnsState.current;
+          data.setTurnState(TurnsState.current);
           break;
         }
       } else if (data is Character) {
         if (data.characterState.health.value > 0) {
-          if (data.turnState == TurnsState.done) {
+          if (data.isTurnState(TurnsState.done)) {
             reapplyConditionsFromListItem(data);
           }
-          data.turnState = TurnsState.current;
+          data.setTurnState(TurnsState.current);
           break;
         }
       }
     }
+
     for (int i = newIndex + 1; i < _gameState.currentList.length; i++) {
-      if (_gameState.currentList[i].turnState == TurnsState.done) {
+      if (_gameState.currentList[i].isTurnState(TurnsState.done)) {
         reapplyConditionsFromListItem(_gameState.currentList[i]);
       }
-      _gameState.currentList[i].turnState = TurnsState.notDone;
+      _gameState.currentList[i].setTurnState(TurnsState.notDone);
     }
   }
 

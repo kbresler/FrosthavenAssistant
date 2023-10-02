@@ -32,7 +32,7 @@ class SectionButtonState extends State<SectionButton> {
               foregroundColor: Colors.black,
               disabledBackgroundColor: Colors.blueGrey,
               fixedSize: Size(55 * scale, 25 * scale),
-              backgroundColor: Colors.white70,
+              backgroundColor: Colors.grey.shade400,
               elevation: 4,
             ),
             onPressed:
@@ -46,10 +46,26 @@ class SectionButtonState extends State<SectionButton> {
                     : null,
             child: Text(
               widget.data.split(" ")[0],
-              style: getTitleTextStyle(scale),
+              style: getTextStyle(scale),
               maxLines: 1,
             ),
           );
         });
+  }
+
+  TextStyle getTextStyle(double scale) {
+    var style = getTitleTextStyle(scale);
+
+    return TextStyle(
+      fontSize: style.fontSize,
+      color: style.color,
+      shadows: [
+        Shadow(
+          color: Colors.black.withOpacity(1.0),
+          offset: Offset.zero,
+          blurRadius: 5.0,
+        ),
+      ],
+    );
   }
 }

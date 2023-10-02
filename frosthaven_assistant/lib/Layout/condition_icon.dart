@@ -73,7 +73,7 @@ class ConditionIconState extends State<ConditionIcon> {
       command = gameState.commands[gameState.commandIndex.value];
     }
     if (command is TurnDoneCommand) {
-      if (widget.owner.turnState == TurnsState.current) {
+      if (widget.owner.isTurnState(TurnsState.current)) {
         //this turn started! play animation for wound and regenerate
         if (widget.condition == Condition.regenerate ||
             widget.condition == Condition.wound ||
@@ -81,7 +81,7 @@ class ConditionIconState extends State<ConditionIcon> {
           _runAnimation();
         }
       }
-      if (widget.owner.turnState == TurnsState.done &&
+      if (widget.owner.isTurnState(TurnsState.done) &&
           gameState.currentList[command.index].id == widget.owner.id) {
         //was current last round but is no more
         if (widget.figure.conditionsAddedPreviousTurn.value

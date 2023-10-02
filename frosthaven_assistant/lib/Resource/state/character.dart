@@ -1,5 +1,6 @@
 import '../../Model/character_class.dart';
 import '../../services/service_locator.dart';
+import '../../Resource/commands/change_stat_commands/change_health_command.dart';
 import '../enums.dart';
 import 'character_state.dart';
 import 'game_state.dart';
@@ -18,10 +19,33 @@ class Character extends ListItemData {
   }
 
   @override
+  void setTurnState(TurnsState state, {bool init = false}) {
+    if (!init && isTurnState(TurnsState.notDone)) {
+      var conditions = characterState.conditions;
+      if (state == TurnsState.current) {
+        GameState gameState = getIt<GameState>();
+        for (int i = conditions.value.length - 1; i >= 0; i--) {
+          Condition item = conditions.value[i];
+          if (item == Condition.wound) {
+            //Future.delayed(const Duration(milliseconds: 600), () {
+            gameState.action(ChangeHealthCommand(-1, id, id));
+            GameMethods.setToastMessage("Wound applied to $id!");
+            Future.delayed(const Duration(milliseconds: 5000), () {
+              GameMethods.setToastMessage("");
+            });
+          }
+        }
+      }
+    }
+
+    super.setTurnState(state);
+  }
+
+  @override
   String toString() {
     return '{'
         '"id": "$id", '
-        '"turnState": ${turnState.index}, '
+        '"turnState": ${getTurnState().index}, '
         '"characterState": ${characterState.toString()}, '
         '"characterClass": "${characterClass.name}" '
         '}';
@@ -29,7 +53,7 @@ class Character extends ListItemData {
 
   Character.fromJson(Map<String, dynamic> json) {
     id = json['id'];
-    turnState = TurnsState.values[json['turnState']];
+    setTurnState(TurnsState.values[json['turnState']], init: true);
     characterState = CharacterState.fromJson(json['characterState']);
     String className = json['characterClass'];
     GameState gameState = getIt<GameState>();

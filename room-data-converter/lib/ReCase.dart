@@ -8,8 +8,8 @@ class ReCase {
   late List<String> _words;
 
   ReCase(String text) {
-    this.originalText = text;
-    this._words = _groupIntoWords(text);
+    originalText = text;
+    _words = _groupIntoWords(text);
   }
 
   List<String> _groupIntoWords(String text) {
@@ -71,7 +71,7 @@ class ReCase {
   String get titleCase => _getPascalCase(separator: ' ');
 
   String _getCamelCase({String separator = ''}) {
-    List<String> words = this._words.map(_upperCaseFirstLetter).toList();
+    List<String> words = _words.map(_upperCaseFirstLetter).toList();
     if (_words.isNotEmpty) {
       words[0] = words[0].toLowerCase();
     }
@@ -80,19 +80,19 @@ class ReCase {
   }
 
   String _getConstantCase({String separator = '_'}) {
-    List<String> words = this._words.map((word) => word.toUpperCase()).toList();
+    List<String> words = _words.map((word) => word.toUpperCase()).toList();
 
     return words.join(separator);
   }
 
   String _getPascalCase({String separator = ''}) {
-    List<String> words = this._words.map(_upperCaseFirstLetter).toList();
+    List<String> words = _words.map(_upperCaseFirstLetter).toList();
 
     return words.join(separator);
   }
 
   String _getSentenceCase({String separator = ' '}) {
-    List<String> words = this._words.map((word) => word.toLowerCase()).toList();
+    List<String> words = _words.map((word) => word.toLowerCase()).toList();
     if (_words.isNotEmpty) {
       words[0] = _upperCaseFirstLetter(words[0]);
     }
@@ -101,7 +101,7 @@ class ReCase {
   }
 
   String _getSnakeCase({String separator = '_'}) {
-    List<String> words = this._words.map((word) => word.toLowerCase()).toList();
+    List<String> words = _words.map((word) => word.toLowerCase()).toList();
 
     return words.join(separator);
   }
