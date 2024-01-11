@@ -1,5 +1,6 @@
 import 'package:collection/collection.dart';
 import 'package:flutter/material.dart';
+import 'package:themed/themed.dart';
 import 'package:frosthaven_assistant/Resource/ui_utils.dart';
 import '../../Model/room.dart';
 import '../../Resource/commands/add_standee_command.dart';
@@ -257,6 +258,32 @@ class AddStandeeMenuState extends State<AutoAddStandeeMenu> {
     );
   }
 
+  Widget buildImagePart(double height, double scale, Monster monster) {
+    return Container(
+        margin: EdgeInsets.only(bottom: 4 * scale, top: 4 * scale),
+        child: PhysicalShape(
+          color: Colors.redAccent,
+          //or bleu if current
+          shadowColor: Colors.black,
+          elevation: 8,
+          clipper: const ShapeBorderClipper(shape: CircleBorder()),
+          child: Container(
+            margin: EdgeInsets.only(bottom: 0 * scale, top: 2 * scale),
+            child: ChangeColors(
+                hue: 0.0,
+                brightness: 0.0,
+                saturation: 0.0,
+                child: Image(
+                  fit: BoxFit.contain,
+                  height: height,
+                  width: height,
+                  image: AssetImage(
+                      "assets/images/monsters/${monster.type.gfx}.png"),
+                )),
+          ),
+        ));
+  }
+
   @override
   Widget build(BuildContext context) {
     int characterIndex =
@@ -371,7 +398,7 @@ class AddStandeeMenuState extends State<AutoAddStandeeMenu> {
           }
 
           return Container(
-              width: 250 * scale,
+              width: 350 * scale,
               //need to set any width to center content, overridden by dialog default min width.
               height: height * scale,
               decoration: BoxDecoration(
@@ -384,67 +411,73 @@ class AddStandeeMenuState extends State<AutoAddStandeeMenu> {
                   fit: BoxFit.cover,
                 ),
               ),
-              child: ValueListenableBuilder<List<MonsterInstance>>(
-                  valueListenable: monster.monsterInstances,
-                  builder: (context, value, child) {
-                    return Stack(children: [
-                      Column(
-                        children: [
-                          if (nrOfElite > 0)
-                            _buildButtonGrid(
-                                scale,
-                                monster,
-                                true,
-                                nrOfStandees,
-                                nrOfElite - currentEliteAdded,
-                                nrOfElite,
-                                nrOfNormal),
-                          if (nrOfNormal > 0)
-                            _buildButtonGrid(
-                                scale,
-                                monster,
-                                false,
-                                nrOfStandees,
-                                nrOfNormal - currentNormalAdded,
-                                nrOfElite,
-                                nrOfNormal),
-                          Row(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                Text("Summoned:",
-                                    style: getSmallTextStyle(scale)),
-                                Checkbox(
-                                  checkColor: Colors.black,
-                                  activeColor: Colors.grey.shade200,
-                                  side: BorderSide(
-                                      color: getIt<Settings>().darkMode.value
-                                          ? Colors.white
-                                          : Colors.black),
-                                  onChanged: (bool? newValue) {
-                                    setState(() {
-                                      addAsSummon = newValue!;
-                                    });
-                                  },
-                                  value: addAsSummon,
-                                )
-                              ])
-                        ],
-                      ),
-                      Positioned(
-                          width: 100,
-                          height: 40,
-                          right: 0,
-                          bottom: 0,
-                          child: TextButton(
-                              child: const Text(
-                                'Close',
-                                style: TextStyle(fontSize: 20),
-                              ),
-                              onPressed: () {
-                                Navigator.pop(context);
-                              })),
-                    ]);
-                  }));
+              child: Row(children: [
+                Spacer(flex: 10),
+                buildImagePart(150 * scale, scale, monster),
+                Spacer(flex: 10),
+                ValueListenableBuilder<List<MonsterInstance>>(
+                    valueListenable: monster.monsterInstances,
+                    builder: (context, value, child) {
+                      return Stack(children: [
+                        Column(
+                          children: [
+                            if (nrOfElite > 0)
+                              _buildButtonGrid(
+                                  scale,
+                                  monster,
+                                  true,
+                                  nrOfStandees,
+                                  nrOfElite - currentEliteAdded,
+                                  nrOfElite,
+                                  nrOfNormal),
+                            if (nrOfNormal > 0)
+                              _buildButtonGrid(
+                                  scale,
+                                  monster,
+                                  false,
+                                  nrOfStandees,
+                                  nrOfNormal - currentNormalAdded,
+                                  nrOfElite,
+                                  nrOfNormal),
+                            Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Text("Summoned:",
+                                      style: getSmallTextStyle(scale)),
+                                  Checkbox(
+                                    checkColor: Colors.black,
+                                    activeColor: Colors.grey.shade200,
+                                    side: BorderSide(
+                                        color: getIt<Settings>().darkMode.value
+                                            ? Colors.white
+                                            : Colors.black),
+                                    onChanged: (bool? newValue) {
+                                      setState(() {
+                                        addAsSummon = newValue!;
+                                      });
+                                    },
+                                    value: addAsSummon,
+                                  )
+                                ])
+                          ],
+                        ),
+                        Positioned(
+                            width: 100,
+                            height: 40,
+                            right: 0,
+                            bottom: 0,
+                            child: TextButton(
+                                child: const Text(
+                                  'Close',
+                                  style: TextStyle(fontSize: 20),
+                                ),
+                                onPressed: () {
+                                  Navigator.pop(context);
+                                })),
+                      ]);
+                    }),
+                Spacer(flex: 10)
+              ]));
         });
   }
 }
