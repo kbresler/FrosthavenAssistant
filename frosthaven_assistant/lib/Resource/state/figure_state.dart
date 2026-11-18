@@ -14,6 +14,15 @@ class FigureState {
   final Set<Condition> _conditionsAddedThisTurn = {};
   final Set<Condition> _conditionsAddedPreviousTurn = {};
 
+  /// Swerski: wound damage was already applied this round, so going back to an
+  /// earlier figure and replaying turns doesn't wound twice. Reset each round.
+  bool get woundTakenThisRound => _woundTakenThisRound;
+  bool _woundTakenThisRound = false;
+
+  void setWoundTakenThisRound(_StateModifier _, bool value) {
+    _woundTakenThisRound = value;
+  }
+
   ValueListenable<int> get level => _level;
   ValueListenable<int> get health => _health;
   ValueListenable<int> get maxHealth => _maxHealth;

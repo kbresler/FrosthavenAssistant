@@ -36,6 +36,7 @@ const double _kProgressBarSize = 4.0;
 const double _kProgressBarBorderWidth = 0.5;
 const int _kHealthLargeThreshold = 99;
 const int _kHexRadix = 16;
+const double _kCurrentBorderWidth = 2.5;
 
 class MonsterBoxBody extends StatelessWidget {
   const MonsterBoxBody({
@@ -102,7 +103,7 @@ class MonsterBoxBody extends StatelessWidget {
 
     return RepaintBoundary(
         child: grayScaleIf(
-            grayedOut: vm.isSummonedThisTurn,
+            grayedOut: vm.isSummonedThisTurn || vm.isStandeeTurnDone,
             child: Container(
                 padding: EdgeInsets.zero,
                 height: _kBoxHeight * scale,
@@ -110,6 +111,13 @@ class MonsterBoxBody extends StatelessWidget {
                 decoration: BoxDecoration(
                   color: Color(int.parse("7A000000", radix: _kHexRadix)),
                   boxShadow: [cardBoxShadow(scale)],
+                  // Swerski: outline the standee whose turn it is.
+                  border: vm.isCurrentStandee
+                      ? Border.all(
+                          color: Colors.lightGreenAccent,
+                          width: _kCurrentBorderWidth * scale,
+                          strokeAlign: BorderSide.strokeAlignOutside)
+                      : null,
                 ),
                 child: Stack(alignment: Alignment.centerLeft, children: [
                   Image(

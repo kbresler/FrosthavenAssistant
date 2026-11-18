@@ -199,6 +199,12 @@ class AppLocalizationsTh extends AppLocalizations {
   String get settingsExpireConditions => 'หมดอายุสถานะ';
 
   @override
+  String get settingsPerStandeeTurns => 'Monster turns one standee at a time';
+
+  @override
+  String get settingsAutoApplyWounds => 'Apply wound damage at start of turn';
+
+  @override
   String get settingsNoStandees => 'ไม่ติดตามตัวยืน';
 
   @override
@@ -1087,6 +1093,11 @@ class AppLocalizationsTh extends AppLocalizations {
   @override
   String cmdTurnDone(String id) {
     return 'เทิร์น $id เสร็จสิ้น';
+  }
+
+  @override
+  String toastWoundDamage(String names) {
+    return 'Wound damage: $names';
   }
 
   @override

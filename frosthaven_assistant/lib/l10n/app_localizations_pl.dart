@@ -200,6 +200,12 @@ class AppLocalizationsPl extends AppLocalizations {
   String get settingsExpireConditions => 'Wygasanie stanów';
 
   @override
+  String get settingsPerStandeeTurns => 'Monster turns one standee at a time';
+
+  @override
+  String get settingsAutoApplyWounds => 'Apply wound damage at start of turn';
+
+  @override
   String get settingsNoStandees => 'Nie śledź pionków';
 
   @override
@@ -1092,6 +1098,11 @@ class AppLocalizationsPl extends AppLocalizations {
   @override
   String cmdTurnDone(String id) {
     return 'Tura $id zakończona';
+  }
+
+  @override
+  String toastWoundDamage(String names) {
+    return 'Wound damage: $names';
   }
 
   @override

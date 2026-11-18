@@ -8,6 +8,7 @@ import 'package:frosthaven_assistant/Resource/state/game_state.dart';
 
 import '../Model/campaign.dart';
 import '../Model/room.dart';
+import '../Resource/commands/command_l10n.dart';
 import '../Resource/game_data.dart';
 import '../Resource/scaling.dart';
 import '../Resource/settings.dart';
@@ -52,6 +53,8 @@ class MainScaffold extends StatelessWidget {
 }
 
 class ToastNotifier extends StatelessWidget {
+  static const int _kWoundToastSeconds = 6;
+
   const ToastNotifier({super.key, this.gameState});
 
   // injected for testing
@@ -67,7 +70,21 @@ class ToastNotifier extends StatelessWidget {
             String message = gameState.toastMessage.value;
             if (message != "") {
               if (context.mounted) {
+                // Swerski: the newest message replaces the one on screen
+                // instead of queueing behind a sticky message forever.
+                ScaffoldMessenger.of(context).removeCurrentSnackBar();
                 showToastSticky(context, message);
+                // Wound messages are short-lived, also when undo or a
+                // network update brings an old one back.
+                if (message.startsWith(commandL10n.toastWoundDamage(''))) {
+                  Future.delayed(const Duration(seconds: _kWoundToastSeconds),
+                      () {
+                    if (gameState.toastMessage.value == message) {
+                      GameUtilMethods.setToastMessage('',
+                          gameState: gameState);
+                    }
+                  });
+                }
               }
             } else {
               if (context.mounted) {

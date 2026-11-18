@@ -51,7 +51,9 @@ bool _isBenignNetworkError(Object? error) {
   return false;
 }
 
-const title = 'X-haven Assistant';
+// Swerski edition: so the game group knows this is our version.
+const title = 'X-haven Assistant (Swerski Edition)';
+const windowTitle = "X-haven Assistant (Swerski's Superfans Edition)";
 String appVersion = '';
 
 void _enablePlatformOverrideForDesktop() {
@@ -78,7 +80,7 @@ Future<void> main() async {
 
   if (Platform.isWindows || Platform.isLinux || Platform.isMacOS) {
     await windowManager.ensureInitialized();
-    windowManager.setTitle(title);
+    windowManager.setTitle(windowTitle);
     windowManager.setMinimumSize(const Size(minScreenWidth, minScreenHeight));
     windowManager.setResizable(true);
   }

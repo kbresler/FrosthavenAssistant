@@ -278,6 +278,7 @@ class RoundMethods {
     }
 
     figure._conditionsAddedThisTurn.clear();
+    figure._woundTakenThisRound = false;
 
     figure._chill.value =
         figure.conditions.value.where((a) => a == Condition.chill).length;
@@ -289,6 +290,9 @@ class RoundMethods {
     final gs = gameState ?? getIt<GameState>();
     for (final item in gs._currentList) {
       item._turnState.value = TurnsState.notDone;
+      if (item is Monster) {
+        _setAllStandeeTurns(item, TurnsState.notDone);
+      }
       if (item is Character) {
         clearTurnStateConditions(
             stateModifier, item.characterState, clearLastTurnToo);
@@ -383,19 +387,31 @@ class RoundMethods {
 
   //1 if item WAS done OR not done, then set it to current, all before to done, and all after to not done
   //2 if item was current: set item to done, all before to done, next to current and rest to not done
-  static void setTurnDone(_StateModifier s, int index, {GameState? gameState}) {
+  static void setTurnDone(_StateModifier s, int index,
+      {GameState? gameState, Settings? settings}) {
     final gs = gameState ?? getIt<GameState>();
+    final perStandee = _perStandeeTurns(settings);
     //set all before to done.
     for (int i = 0; i < index; i++) {
       if (gs.currentList[i].turnState.value != TurnsState.done) {
         gs.currentList[i]._turnState.value = TurnsState.done;
+        _setAllStandeeTurns(gs.currentList[i], TurnsState.done);
         removeExpiringConditionsFromListItem(s, gs.currentList[i]);
       }
     }
     //if on index is NOT current then set to current else set to done
     int newIndex = index + 1;
-    if (gs.currentList[index].turnState.value == TurnsState.current) {
-      gs.currentList[index]._turnState.value = TurnsState.done;
+    final indexItem = gs.currentList[index];
+    if (indexItem.turnState.value == TurnsState.current) {
+      // Swerski: a monster group plays one standee at a time. Tapping the
+      // group finishes the current standee; the group is done after the last.
+      if (perStandee &&
+          indexItem is Monster &&
+          _advanceStandeeTurn(indexItem)) {
+        return;
+      }
+      indexItem._turnState.value = TurnsState.done;
+      _setAllStandeeTurns(indexItem, TurnsState.done);
       removeExpiringConditionsFromListItem(s, gs.currentList[index]);
       //remove expiring conditions
     } else {
@@ -411,6 +427,9 @@ class RoundMethods {
             reapplyConditionsFromListItem(s, data);
           }
           data._turnState.value = TurnsState.current;
+          if (perStandee) {
+            _startStandeeTurns(data);
+          }
           break;
         }
       } else if (data is Character) {
@@ -429,6 +448,100 @@ class RoundMethods {
         reapplyConditionsFromListItem(s, gs.currentList[i]);
       }
       gs.currentList[i]._turnState.value = TurnsState.notDone;
+      _setAllStandeeTurns(gs.currentList[i], TurnsState.notDone);
     }
+  }
+
+  /// Makes [item] the current figure, as at the start of the round. With
+  /// per-standee turns on, a monster group's first standee becomes current too.
+  static void startTurn(_StateModifier _, ListItemData item,
+      {Settings? settings}) {
+    item._turnState.value = TurnsState.current;
+    if (item is Monster && _perStandeeTurns(settings)) {
+      _startStandeeTurns(item);
+    }
+  }
+
+  /// Called after the current standee of [monster] was removed mid-turn (for
+  /// example killed by wound damage at the start of its turn). Moves on to the
+  /// next standee, or ends the group's turn if none are left.
+  static void continueAfterStandeeRemoved(_StateModifier s, Monster monster,
+      {GameState? gameState, Settings? settings}) {
+    final gs = gameState ?? getIt<GameState>();
+    if (monster.turnState.value != TurnsState.current ||
+        !_perStandeeTurns(settings)) {
+      return;
+    }
+    if (monster._monsterInstances
+        .any((i) => i.turnState == TurnsState.current)) {
+      return;
+    }
+    if (_advanceStandeeTurn(monster)) {
+      return;
+    }
+    final index = gs.currentList.indexOf(monster);
+    if (index >= 0) {
+      setTurnDone(s, index, gameState: gs, settings: settings);
+    }
+  }
+
+  static bool _perStandeeTurns(Settings? settings) {
+    if (settings != null) {
+      return settings.perStandeeTurns.value;
+    }
+    if (!getIt.isRegistered<Settings>()) {
+      return false;
+    }
+    return getIt<Settings>().perStandeeTurns.value;
+  }
+
+  static void _setAllStandeeTurns(ListItemData item, TurnsState state) {
+    if (item is Monster) {
+      for (final instance in item._monsterInstances) {
+        instance._turnState = state;
+      }
+    }
+  }
+
+  /// Starts (or restarts) a group's turn. Standees that already acted this
+  /// round stay done, so only those still to go take a turn (for example new
+  /// standees revealed by a door after the group went). If every standee has
+  /// already acted, it is a deliberate replay and they all go again.
+  static void _startStandeeTurns(Monster monster) {
+    for (final instance in monster._monsterInstances) {
+      if (instance._turnState == TurnsState.current) {
+        instance._turnState = TurnsState.notDone;
+      }
+    }
+    final someStillToGo = monster._monsterInstances.any((i) =>
+        i._turnState == TurnsState.notDone && i.health.value > 0);
+    if (!someStillToGo) {
+      _setAllStandeeTurns(monster, TurnsState.notDone);
+    }
+    _advanceStandeeTurn(monster);
+  }
+
+  /// Finishes the current standee (if any) and makes the next one that hasn't
+  /// acted current. Stunned standees lose their turn and are skipped.
+  /// Returns false when no standee is left to act.
+  static bool _advanceStandeeTurn(Monster monster) {
+    for (final instance in monster._monsterInstances) {
+      if (instance._turnState == TurnsState.current) {
+        instance._turnState = TurnsState.done;
+      }
+    }
+    for (final instance in monster._monsterInstances) {
+      if (instance._turnState != TurnsState.notDone ||
+          instance.health.value <= 0) {
+        continue;
+      }
+      if (instance.conditions.value.contains(Condition.stun)) {
+        instance._turnState = TurnsState.done;
+        continue;
+      }
+      instance._turnState = TurnsState.current;
+      return true;
+    }
+    return false;
   }
 }

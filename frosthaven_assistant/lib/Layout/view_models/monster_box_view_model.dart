@@ -64,6 +64,18 @@ class MonsterBoxViewModel {
   bool get isSummonedThisTurn =>
       data.roundSummoned == _gameState.round.value && ownerIsCurrent;
 
+  bool get _perStandeeTurns =>
+      _settings.perStandeeTurns.value &&
+      _gameState.roundState.value == RoundState.playTurns;
+
+  /// Swerski: this standee is the one taking its turn right now.
+  bool get isCurrentStandee =>
+      _perStandeeTurns && data.turnState == TurnsState.current;
+
+  /// Swerski: this standee already took (or lost) its turn this round.
+  bool get isStandeeTurnDone =>
+      _perStandeeTurns && data.turnState == TurnsState.done;
+
   bool get useHealthWheel => _settings.enableHeathWheel.value;
 
   /// Returns the owner ListItemData for building condition icons.

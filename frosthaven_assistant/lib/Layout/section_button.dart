@@ -11,6 +11,7 @@ class SectionButton extends StatelessWidget {
   static const double _kButtonHeight = 25.0;
   static const double _kElevation = 4.0;
   static const double _kTextScale = 0.8;
+  static const double _kGlowBlur = 5.0;
 
   final String data;
   // injected for testing
@@ -35,7 +36,8 @@ class SectionButton extends StatelessWidget {
               foregroundColor: Colors.black,
               disabledBackgroundColor: Colors.blueGrey,
               fixedSize: Size(_kButtonWidth * scale, _kButtonHeight * scale),
-              backgroundColor: Colors.white70,
+              // Swerski: solid grey buttons, glowing text.
+              backgroundColor: Colors.grey.shade400,
               elevation: _kElevation,
             ),
             onPressed: !gameState.scenarioSectionsAdded.contains(data)
@@ -46,7 +48,10 @@ class SectionButton extends StatelessWidget {
                 : null,
             child: Text(
               data.split(" ").first,
-              style: getTitleTextStyle(scale * _kTextScale, forceBlack: true),
+              style: getTitleTextStyle(scale * _kTextScale, settings: settings)
+                  .copyWith(shadows: const [
+                Shadow(color: Colors.black, blurRadius: _kGlowBlur),
+              ]),
               maxLines: 1,
             ),
           ));

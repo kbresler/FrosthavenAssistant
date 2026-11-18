@@ -135,6 +135,20 @@ class SettingsMenuState extends State<SettingsMenu> {
                   settings.saveToDisk();
                 }),
             SettingsCheckbox(
+                title: l10n.settingsPerStandeeTurns,
+                notifier: settings.perStandeeTurns,
+                onChanged: (v) {
+                  settings.perStandeeTurns.value = v;
+                  settings.saveToDisk();
+                }),
+            SettingsCheckbox(
+                title: l10n.settingsAutoApplyWounds,
+                notifier: settings.autoApplyWounds,
+                onChanged: (v) {
+                  settings.autoApplyWounds.value = v;
+                  settings.saveToDisk();
+                }),
+            SettingsCheckbox(
                 title: l10n.settingsNoStandees,
                 notifier: settings.noStandees,
                 onChanged: (v) {

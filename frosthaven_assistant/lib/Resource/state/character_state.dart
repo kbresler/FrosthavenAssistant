@@ -118,6 +118,7 @@ class CharacterState extends FigureState {
         }
       }
     }
+    _woundTakenThisRound = json["woundTakenThisRound"] == true;
   }
 
   /// Updates all fields in-place from [json], firing [ValueNotifier] listeners
@@ -186,6 +187,7 @@ class CharacterState extends FigureState {
         }
       }
     }
+    _woundTakenThisRound = json["woundTakenThisRound"] == true;
   }
 
   void flipPerk(_StateModifier _, int index) {
@@ -243,6 +245,7 @@ class CharacterState extends FigureState {
             _conditionsAddedThisTurn.map((c) => c.index).toList(),
         'conditionsAddedPreviousTurn':
             _conditionsAddedPreviousTurn.map((c) => c.index).toList(),
+        'woundTakenThisRound': _woundTakenThisRound,
       };
 
   @override

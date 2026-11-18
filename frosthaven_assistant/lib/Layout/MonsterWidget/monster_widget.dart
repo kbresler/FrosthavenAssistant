@@ -143,7 +143,13 @@ class MonsterWidgetState extends State<MonsterWidget> {
 
           return RepaintBoundary(
               child: Column(mainAxisSize: MainAxisSize.max, children: [
-            grayScaleIf(grayedOut: _vm.isGrayScale, child: monsterRow),
+            // Swerski: a finished group that still has standees on the board
+            // turns sepia, so it stands apart from groups not in play (gray).
+            _vm.isDoneWithStandees
+                ? ColorFiltered(
+                    colorFilter: const ColorFilter.matrix(sepia),
+                    child: monsterRow)
+                : grayScaleIf(grayedOut: _vm.isGrayScale, child: monsterRow),
             Container(
               margin: EdgeInsets.only(
                   left: _kMarginH * scale, right: _kMarginH * scale),

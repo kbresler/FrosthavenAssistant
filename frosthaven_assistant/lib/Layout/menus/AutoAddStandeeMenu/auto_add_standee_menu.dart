@@ -35,6 +35,10 @@ class AutoAddStandeeMenu extends StatefulWidget {
 
 class AddStandeeMenuState extends State<AutoAddStandeeMenu> {
   static const double _kMenuWidth = 250.0;
+  static const double _kImageAreaWidth = 110.0;
+  static const double _kImageSize = 90.0;
+  static const double _kImageTopPadding = 2.0;
+  static const double _kImageElevation = 8.0;
   static const double _kHeightBase = 140.0;
   static const double _kHeightRow2 = 172.0;
   static const double _kHeightRow3 = 211.0;
@@ -282,10 +286,16 @@ class AddStandeeMenuState extends State<AutoAddStandeeMenu> {
           }
 
           return ModalBackground(
-              width: _kMenuWidth * scale,
+              width: (_kMenuWidth + _kImageAreaWidth) * scale,
               //need to set any width to center content, overridden by dialog default min width.
               height: height * scale,
-              child: ValueListenableBuilder<int>(
+              child: Row(children: [
+                // Swerski: show which monster these standees are for.
+                SizedBox(
+                    width: _kImageAreaWidth * scale,
+                    child: Center(child: _buildMonsterImage(monster, scale))),
+                Expanded(
+                    child: ValueListenableBuilder<int>(
                   valueListenable: _gameState.commandIndex,
                   builder: (context, value, child) {
                     return Stack(children: [
@@ -349,7 +359,27 @@ class AddStandeeMenuState extends State<AutoAddStandeeMenu> {
                                 Navigator.pop(context);
                               })),
                     ]);
-                  }));
+                  })),
+              ]));
         });
+  }
+
+  Widget _buildMonsterImage(Monster monster, double scale) {
+    final size = _kImageSize * scale;
+    return PhysicalShape(
+      color: Colors.redAccent,
+      shadowColor: Colors.black,
+      elevation: _kImageElevation,
+      clipper: const ShapeBorderClipper(shape: CircleBorder()),
+      child: Padding(
+        padding: EdgeInsets.only(top: _kImageTopPadding * scale),
+        child: Image(
+          fit: BoxFit.contain,
+          height: size,
+          width: size,
+          image: AssetImage("assets/images/monsters/${monster.type.gfx}.png"),
+        ),
+      ),
+    );
   }
 }

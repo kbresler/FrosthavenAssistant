@@ -58,6 +58,15 @@ class MonsterInstance extends FigureState {
 
   int _roundSummoned = -1;
 
+  /// This standee's own turn state, used when monster turns are taken one
+  /// standee at a time (see `Settings.perStandeeTurns`).
+  TurnsState get turnState => _turnState;
+  TurnsState _turnState = TurnsState.notDone;
+
+  void setTurnState(_StateModifier _, TurnsState value) {
+    _turnState = value;
+  }
+
   void _setLevel(Monster monster, {GameState? gameState}) {
     StatValue newHealthValue = const IntStatValue(
         10); //need to put something outer than 0 or the standee will die immediately causing glitch
@@ -125,6 +134,7 @@ class MonsterInstance extends FigureState {
         'name': name,
         'gfx': gfx,
         'roundSummoned': roundSummoned,
+        'turnState': _turnState.index,
         'type': type.index,
         'chill': chill.value,
         'plague': plague.value,
@@ -133,6 +143,7 @@ class MonsterInstance extends FigureState {
             _conditionsAddedThisTurn.map((c) => c.index).toList(),
         'conditionsAddedPreviousTurn':
             _conditionsAddedPreviousTurn.map((c) => c.index).toList(),
+        'woundTakenThisRound': _woundTakenThisRound,
       };
 
   @override
@@ -155,6 +166,13 @@ class MonsterInstance extends FigureState {
     range = json["range"];
     _roundSummoned =
         json.containsKey("roundSummoned") ? json["roundSummoned"] : -1;
+    final turnStateIdx = json["turnState"] as int?;
+    if (turnStateIdx != null &&
+        turnStateIdx >= 0 &&
+        turnStateIdx < TurnsState.values.length) {
+      _turnState = TurnsState.values[turnStateIdx];
+    }
+    _woundTakenThisRound = json["woundTakenThisRound"] == true;
     _chill.value = json["chill"];
     if (json.containsKey("plague")) {
       _plague.value = json["plague"];

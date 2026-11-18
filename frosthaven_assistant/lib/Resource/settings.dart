@@ -32,6 +32,8 @@ class Settings {
   final randomStandees = ValueNotifier<bool>(false);
   final noCalculation = ValueNotifier<bool>(false);
   final expireConditions = ValueNotifier<bool>(true);
+  final perStandeeTurns = ValueNotifier<bool>(true);
+  final autoApplyWounds = ValueNotifier<bool>(true);
   final hideLootDeck = ValueNotifier<bool>(false);
   final shimmer = ValueNotifier<bool>(
       (Platform.isWindows || Platform.isLinux || Platform.isMacOS));
@@ -275,6 +277,12 @@ class Settings {
       if (data["expireConditions"] != null) {
         expireConditions.value = data["expireConditions"];
       }
+      if (data["perStandeeTurns"] != null) {
+        perStandeeTurns.value = data["perStandeeTurns"];
+      }
+      if (data["autoApplyWounds"] != null) {
+        autoApplyWounds.value = data["autoApplyWounds"];
+      }
       if (data["lastKnownConnection"] != null) {
         lastKnownConnection = data["lastKnownConnection"];
       }
@@ -377,6 +385,8 @@ class Settings {
         '"randomStandees": ${randomStandees.value}, '
         '"noCalculation": ${noCalculation.value}, '
         '"expireConditions": ${expireConditions.value}, '
+        '"perStandeeTurns": ${perStandeeTurns.value}, '
+        '"autoApplyWounds": ${autoApplyWounds.value}, '
         '"hideLootDeck": ${hideLootDeck.value}, '
         '"style": ${style.value.index}, '
         '"darkMode": ${darkMode.value}, '

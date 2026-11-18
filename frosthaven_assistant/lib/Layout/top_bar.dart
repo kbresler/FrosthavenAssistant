@@ -43,7 +43,7 @@ class TopBar extends StatelessWidget {
             title: Container(
               padding: EdgeInsets.only(left: _kTitlePaddingLeft * userScaling),
               child: Text(
-                "X-haven\nAssistant",
+                "X-haven Assistant\n(Swerski Edition)",
                 style: getWhiteShadowStyle(kFontSizeBody * userScaling, shadow),
               ),
             ),

@@ -461,6 +461,18 @@ abstract class AppLocalizations {
   /// **'Expire Conditions'**
   String get settingsExpireConditions;
 
+  /// No description provided for @settingsPerStandeeTurns.
+  ///
+  /// In en, this message translates to:
+  /// **'Monster turns one standee at a time'**
+  String get settingsPerStandeeTurns;
+
+  /// No description provided for @settingsAutoApplyWounds.
+  ///
+  /// In en, this message translates to:
+  /// **'Apply wound damage at start of turn'**
+  String get settingsAutoApplyWounds;
+
   /// No description provided for @settingsNoStandees.
   ///
   /// In en, this message translates to:
@@ -1990,6 +2002,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'{id}\'s turn done'**
   String cmdTurnDone(String id);
+
+  /// No description provided for @toastWoundDamage.
+  ///
+  /// In en, this message translates to:
+  /// **'Wound damage: {names}'**
+  String toastWoundDamage(String names);
 
   /// No description provided for @cmdAddPerk.
   ///

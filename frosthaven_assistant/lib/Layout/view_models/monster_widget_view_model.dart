@@ -35,6 +35,13 @@ class MonsterWidgetViewModel {
       (turnState == TurnsState.done &&
           roundState != RoundState.chooseInitiative);
 
+  bool get isDoneWithStandees =>
+      isActive &&
+      !specialDisabled &&
+      monster.monsterInstances.isNotEmpty &&
+      turnState == TurnsState.done &&
+      roundState != RoundState.chooseInitiative;
+
   bool get showTurnTap =>
       roundState == RoundState.playTurns &&
       (monster.monsterInstances.isNotEmpty || isActive) &&

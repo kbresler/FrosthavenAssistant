@@ -38,7 +38,7 @@ class MonsterImagePart extends StatelessWidget {
               bottom: _kImageMarginV * scale, top: _kImageMarginV * scale),
           child: PhysicalShape(
             color: vm.turnState == TurnsState.current
-                ? Colors.tealAccent
+                ? Colors.greenAccent
                 : Colors.transparent,
             shadowColor: Colors.black,
             elevation: _kElevation,

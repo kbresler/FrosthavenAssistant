@@ -127,8 +127,10 @@ void main() {
       final before = settings.autoAddStandees.value;
       await pumpMenu(tester);
 
-      await tester
-          .tap(find.widgetWithText(CheckboxListTile, 'Auto Add Standees'));
+      final finder =
+          find.widgetWithText(CheckboxListTile, 'Auto Add Standees');
+      await tester.ensureVisible(finder);
+      await tester.tap(finder);
       await tester.pump();
 
       expect(settings.autoAddStandees.value, !before);

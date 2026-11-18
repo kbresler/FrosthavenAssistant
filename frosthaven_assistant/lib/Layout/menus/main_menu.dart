@@ -76,7 +76,7 @@ class MainMenu extends StatelessWidget {
                     Positioned(
                       right: 6,
                       bottom: 0,
-                      child: Text(l10n.versionLabel(appVersion)),
+                      child: Text(l10n.versionLabel('$appVersion-swerski')),
                     ),
                   ],
                 ),
@@ -289,6 +289,11 @@ class MainMenu extends StatelessWidget {
                       },
                     )
                   : Container(),
+              // Swerski edition picture at the bottom of the menu.
+              const Image(
+                image: AssetImage("assets/images/swerski.png"),
+                fit: BoxFit.fitWidth,
+              ),
             ],
           );
         },

@@ -151,6 +151,12 @@ void main() {
 
   group('MonsterWidgetViewModel.endTurn', () {
     test('dispatches TurnDoneCommand', () {
+      // One tap ends the whole group only with per-standee turns off
+      // (Swerski edition setting; see swerski_turns_test.dart).
+      final settings = getIt<Settings>();
+      final perStandeeBefore = settings.perStandeeTurns.value;
+      settings.perStandeeTurns.value = false;
+      addTearDown(() => settings.perStandeeTurns.value = perStandeeBefore);
       final monster = addArtillery();
       AddStandeeCommand(
         1,
