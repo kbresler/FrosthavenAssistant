@@ -51,6 +51,39 @@ class SettingsInfoButton extends StatelessWidget {
   }
 }
 
+/// Swerski: a group heading in the settings list.
+class SettingsHeading extends StatelessWidget {
+  static const double _kPaddingLeft = 16.0;
+  static const double _kPaddingTop = 20.0;
+  static const double _kPaddingBottom = 4.0;
+
+  const SettingsHeading(this.title, {super.key, this.trailing});
+
+  final String title;
+
+  /// Shown right after the title, e.g. a [SettingsInfoButton].
+  final Widget? trailing;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final label = Text(title,
+        style:
+            theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold));
+    final trailing = this.trailing;
+    return Container(
+      constraints: const BoxConstraints(minWidth: double.infinity),
+      padding: const EdgeInsets.only(
+          left: _kPaddingLeft, top: _kPaddingTop, bottom: _kPaddingBottom),
+      decoration: BoxDecoration(
+          border: Border(bottom: BorderSide(color: theme.dividerColor))),
+      child: trailing == null
+          ? label
+          : Row(children: [Flexible(child: label), trailing]),
+    );
+  }
+}
+
 class SettingsCheckbox extends StatelessWidget {
   const SettingsCheckbox({
     super.key,

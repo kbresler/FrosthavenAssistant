@@ -190,13 +190,25 @@ class AppLocalizationsEn extends AppLocalizations {
   String get settingsDarkMode => 'Dark mode';
 
   @override
-  String get settingsSoftNumpad => 'Soft numpad for input';
+  String get settingsSoftNumpad => 'On-screen number pad for typing numbers';
 
   @override
   String get settingsNoInit => 'Don\'t ask for initiative';
 
   @override
-  String get settingsExpireConditions => 'Expire Conditions';
+  String get settingsGroupSwerski => 'Swerski Edition';
+
+  @override
+  String get settingsGroupGameplay => 'Gameplay';
+
+  @override
+  String get settingsGroupDisplay => 'Display';
+
+  @override
+  String get settingsGroupOther => 'Other';
+
+  @override
+  String get settingsExpireConditions => 'Remove conditions when they expire';
 
   @override
   String get settingsPerStandeeTurns => 'Monster turns one standee at a time';
@@ -214,22 +226,22 @@ class AppLocalizationsEn extends AppLocalizations {
   String get settingsTurnGlow => 'Green glow on whose turn it is';
 
   @override
-  String get settingsNoStandees => 'Don\'t track Standees';
+  String get settingsNoStandees => 'Don\'t track standees';
 
   @override
-  String get settingsAutoAddStandees => 'Auto Add Standees';
+  String get settingsAutoAddStandees => 'Auto-add standees';
 
   @override
-  String get settingsAutoAddSpawns => 'Auto Add Timed Spawns';
+  String get settingsAutoAddSpawns => 'Auto-add timed spawns';
 
   @override
-  String get settingsRandomStandees => 'Random Standees';
+  String get settingsRandomStandees => 'Random standee numbers';
 
   @override
-  String get settingsNoCalculations => 'No Calculations';
+  String get settingsNoCalculations => 'No calculations';
 
   @override
-  String get settingsHideLootDeck => 'Hide Loot Deck';
+  String get settingsHideLootDeck => 'Hide loot deck';
 
   @override
   String get settingsShimmer => 'Stat card text shimmers';
@@ -262,48 +274,49 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get settingsFhHazTerrainCalc =>
-      'Use Frosthaven Hazardous Terrain Calculation in OG Gloomhaven';
+      'Frosthaven hazardous terrain damage in original Gloomhaven';
 
   @override
   String get settingsAllyDeckOGGloom =>
-      'Use Ally Attack Modifier Deck in OG Gloomhaven';
+      'Ally attack modifier deck in original Gloomhaven';
 
   @override
-  String get settingsShowScenarioNames => 'Show Scenario names in list';
+  String get settingsShowScenarioNames =>
+      'Show scenario names in the scenario list';
 
   @override
-  String get settingsShowBattleGoalReminder => 'Show Battle Goal Reminder';
+  String get settingsShowBattleGoalReminder => 'Remind to choose Battle Goals';
 
   @override
-  String get settingsShowCustomContent => 'Show Custom Content';
+  String get settingsShowCustomContent => 'Show custom content';
 
   @override
-  String get settingsShowSections => 'Show Sections in Main Screen';
+  String get settingsShowSections => 'Show sections on the main screen';
 
   @override
-  String get settingsShowReminders => 'Show Round Special Rule Reminders';
+  String get settingsShowReminders => 'Remind of special rules each round';
 
   @override
-  String get settingsShowAmdDeck => 'Show Attack Modifier Decks';
+  String get settingsShowAmdDeck => 'Show attack modifier decks';
 
   @override
-  String get settingsShowCharacterAmd => 'Show character Attack Modifier Decks';
+  String get settingsShowCharacterAmd => 'Show character attack modifier decks';
 
   @override
   String get settingsHealthWheel =>
-      'Enable heath wheel: drag left-right to change health';
+      'Health wheel: drag left or right to change health';
 
   @override
-  String get settingsFullscreen => 'Fullscreen';
+  String get settingsFullscreen => 'Full screen';
 
   @override
-  String get settingsMainListScaling => 'Main List Scaling:';
+  String get settingsMainListScaling => 'Board size';
 
   @override
-  String get settingsAppBarScaling => 'App Bar Scaling:';
+  String get settingsAppBarScaling => 'Top and bottom bar size';
 
   @override
-  String get settingsStyleLabel => 'Style:';
+  String get settingsStyleLabel => 'Style';
 
   @override
   String get styleFrosthaven => 'Frosthaven';
@@ -312,13 +325,13 @@ class AppLocalizationsEn extends AppLocalizations {
   String get styleOriginal => 'Original';
 
   @override
-  String get settingsClearUnlocked => 'Clear unlocked characters and stuff';
+  String get settingsClearUnlocked => 'Clear unlocked characters';
 
   @override
   String get settingsUnlockSpecials => 'Unlock specials';
 
   @override
-  String get settingsLoadSaveState => 'Load/Save State';
+  String get settingsLoadSaveState => 'Load or save game';
 
   @override
   String get noResultsFound => 'No results found';

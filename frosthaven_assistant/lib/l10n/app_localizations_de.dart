@@ -199,6 +199,18 @@ class AppLocalizationsDe extends AppLocalizations {
   String get settingsNoInit => 'Nicht nach Initiative fragen';
 
   @override
+  String get settingsGroupSwerski => 'Swerski Edition';
+
+  @override
+  String get settingsGroupGameplay => 'Gameplay';
+
+  @override
+  String get settingsGroupDisplay => 'Display';
+
+  @override
+  String get settingsGroupOther => 'Other';
+
+  @override
   String get settingsExpireConditions => 'Zustände ablaufen lassen';
 
   @override

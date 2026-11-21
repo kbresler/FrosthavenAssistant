@@ -196,6 +196,18 @@ class AppLocalizationsZh extends AppLocalizations {
   String get settingsNoInit => '不询问先攻';
 
   @override
+  String get settingsGroupSwerski => 'Swerski Edition';
+
+  @override
+  String get settingsGroupGameplay => 'Gameplay';
+
+  @override
+  String get settingsGroupDisplay => 'Display';
+
+  @override
+  String get settingsGroupOther => 'Other';
+
+  @override
   String get settingsExpireConditions => '状态效果过期';
 
   @override

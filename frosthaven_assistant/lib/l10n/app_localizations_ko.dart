@@ -196,6 +196,18 @@ class AppLocalizationsKo extends AppLocalizations {
   String get settingsNoInit => '선제권 묻지 않기';
 
   @override
+  String get settingsGroupSwerski => 'Swerski Edition';
+
+  @override
+  String get settingsGroupGameplay => 'Gameplay';
+
+  @override
+  String get settingsGroupDisplay => 'Display';
+
+  @override
+  String get settingsGroupOther => 'Other';
+
+  @override
   String get settingsExpireConditions => '상태 이상 만료';
 
   @override

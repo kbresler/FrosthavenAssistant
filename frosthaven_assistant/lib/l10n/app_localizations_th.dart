@@ -196,6 +196,18 @@ class AppLocalizationsTh extends AppLocalizations {
   String get settingsNoInit => 'ไม่ถามค่าริเริ่ม';
 
   @override
+  String get settingsGroupSwerski => 'Swerski Edition';
+
+  @override
+  String get settingsGroupGameplay => 'Gameplay';
+
+  @override
+  String get settingsGroupDisplay => 'Display';
+
+  @override
+  String get settingsGroupOther => 'Other';
+
+  @override
   String get settingsExpireConditions => 'หมดอายุสถานะ';
 
   @override

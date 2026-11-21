@@ -446,7 +446,7 @@ abstract class AppLocalizations {
   /// No description provided for @settingsSoftNumpad.
   ///
   /// In en, this message translates to:
-  /// **'Soft numpad for input'**
+  /// **'On-screen number pad for typing numbers'**
   String get settingsSoftNumpad;
 
   /// No description provided for @settingsNoInit.
@@ -455,10 +455,34 @@ abstract class AppLocalizations {
   /// **'Don\'t ask for initiative'**
   String get settingsNoInit;
 
+  /// No description provided for @settingsGroupSwerski.
+  ///
+  /// In en, this message translates to:
+  /// **'Swerski Edition'**
+  String get settingsGroupSwerski;
+
+  /// No description provided for @settingsGroupGameplay.
+  ///
+  /// In en, this message translates to:
+  /// **'Gameplay'**
+  String get settingsGroupGameplay;
+
+  /// No description provided for @settingsGroupDisplay.
+  ///
+  /// In en, this message translates to:
+  /// **'Display'**
+  String get settingsGroupDisplay;
+
+  /// No description provided for @settingsGroupOther.
+  ///
+  /// In en, this message translates to:
+  /// **'Other'**
+  String get settingsGroupOther;
+
   /// No description provided for @settingsExpireConditions.
   ///
   /// In en, this message translates to:
-  /// **'Expire Conditions'**
+  /// **'Remove conditions when they expire'**
   String get settingsExpireConditions;
 
   /// No description provided for @settingsPerStandeeTurns.
@@ -494,37 +518,37 @@ abstract class AppLocalizations {
   /// No description provided for @settingsNoStandees.
   ///
   /// In en, this message translates to:
-  /// **'Don\'t track Standees'**
+  /// **'Don\'t track standees'**
   String get settingsNoStandees;
 
   /// No description provided for @settingsAutoAddStandees.
   ///
   /// In en, this message translates to:
-  /// **'Auto Add Standees'**
+  /// **'Auto-add standees'**
   String get settingsAutoAddStandees;
 
   /// No description provided for @settingsAutoAddSpawns.
   ///
   /// In en, this message translates to:
-  /// **'Auto Add Timed Spawns'**
+  /// **'Auto-add timed spawns'**
   String get settingsAutoAddSpawns;
 
   /// No description provided for @settingsRandomStandees.
   ///
   /// In en, this message translates to:
-  /// **'Random Standees'**
+  /// **'Random standee numbers'**
   String get settingsRandomStandees;
 
   /// No description provided for @settingsNoCalculations.
   ///
   /// In en, this message translates to:
-  /// **'No Calculations'**
+  /// **'No calculations'**
   String get settingsNoCalculations;
 
   /// No description provided for @settingsHideLootDeck.
   ///
   /// In en, this message translates to:
-  /// **'Hide Loot Deck'**
+  /// **'Hide loot deck'**
   String get settingsHideLootDeck;
 
   /// No description provided for @settingsShimmer.
@@ -584,85 +608,85 @@ abstract class AppLocalizations {
   /// No description provided for @settingsFhHazTerrainCalc.
   ///
   /// In en, this message translates to:
-  /// **'Use Frosthaven Hazardous Terrain Calculation in OG Gloomhaven'**
+  /// **'Frosthaven hazardous terrain damage in original Gloomhaven'**
   String get settingsFhHazTerrainCalc;
 
   /// No description provided for @settingsAllyDeckOGGloom.
   ///
   /// In en, this message translates to:
-  /// **'Use Ally Attack Modifier Deck in OG Gloomhaven'**
+  /// **'Ally attack modifier deck in original Gloomhaven'**
   String get settingsAllyDeckOGGloom;
 
   /// No description provided for @settingsShowScenarioNames.
   ///
   /// In en, this message translates to:
-  /// **'Show Scenario names in list'**
+  /// **'Show scenario names in the scenario list'**
   String get settingsShowScenarioNames;
 
   /// No description provided for @settingsShowBattleGoalReminder.
   ///
   /// In en, this message translates to:
-  /// **'Show Battle Goal Reminder'**
+  /// **'Remind to choose Battle Goals'**
   String get settingsShowBattleGoalReminder;
 
   /// No description provided for @settingsShowCustomContent.
   ///
   /// In en, this message translates to:
-  /// **'Show Custom Content'**
+  /// **'Show custom content'**
   String get settingsShowCustomContent;
 
   /// No description provided for @settingsShowSections.
   ///
   /// In en, this message translates to:
-  /// **'Show Sections in Main Screen'**
+  /// **'Show sections on the main screen'**
   String get settingsShowSections;
 
   /// No description provided for @settingsShowReminders.
   ///
   /// In en, this message translates to:
-  /// **'Show Round Special Rule Reminders'**
+  /// **'Remind of special rules each round'**
   String get settingsShowReminders;
 
   /// No description provided for @settingsShowAmdDeck.
   ///
   /// In en, this message translates to:
-  /// **'Show Attack Modifier Decks'**
+  /// **'Show attack modifier decks'**
   String get settingsShowAmdDeck;
 
   /// No description provided for @settingsShowCharacterAmd.
   ///
   /// In en, this message translates to:
-  /// **'Show character Attack Modifier Decks'**
+  /// **'Show character attack modifier decks'**
   String get settingsShowCharacterAmd;
 
   /// No description provided for @settingsHealthWheel.
   ///
   /// In en, this message translates to:
-  /// **'Enable heath wheel: drag left-right to change health'**
+  /// **'Health wheel: drag left or right to change health'**
   String get settingsHealthWheel;
 
   /// No description provided for @settingsFullscreen.
   ///
   /// In en, this message translates to:
-  /// **'Fullscreen'**
+  /// **'Full screen'**
   String get settingsFullscreen;
 
   /// No description provided for @settingsMainListScaling.
   ///
   /// In en, this message translates to:
-  /// **'Main List Scaling:'**
+  /// **'Board size'**
   String get settingsMainListScaling;
 
   /// No description provided for @settingsAppBarScaling.
   ///
   /// In en, this message translates to:
-  /// **'App Bar Scaling:'**
+  /// **'Top and bottom bar size'**
   String get settingsAppBarScaling;
 
   /// No description provided for @settingsStyleLabel.
   ///
   /// In en, this message translates to:
-  /// **'Style:'**
+  /// **'Style'**
   String get settingsStyleLabel;
 
   /// No description provided for @styleFrosthaven.
@@ -680,7 +704,7 @@ abstract class AppLocalizations {
   /// No description provided for @settingsClearUnlocked.
   ///
   /// In en, this message translates to:
-  /// **'Clear unlocked characters and stuff'**
+  /// **'Clear unlocked characters'**
   String get settingsClearUnlocked;
 
   /// No description provided for @settingsUnlockSpecials.
@@ -692,7 +716,7 @@ abstract class AppLocalizations {
   /// No description provided for @settingsLoadSaveState.
   ///
   /// In en, this message translates to:
-  /// **'Load/Save State'**
+  /// **'Load or save game'**
   String get settingsLoadSaveState;
 
   /// No description provided for @noResultsFound.

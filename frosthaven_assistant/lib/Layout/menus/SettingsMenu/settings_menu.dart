@@ -64,6 +64,17 @@ class SettingsMenuState extends State<SettingsMenu> {
   Network get _network => widget.network ?? getIt<Network>();
   Client get _client => widget.client ?? getIt<Client>();
 
+  Widget _label(String text) => Container(
+        constraints: const BoxConstraints(minWidth: double.infinity),
+        padding: const EdgeInsets.only(
+            left: SettingsMenu._kLabelPaddingLeft,
+            top: SettingsMenu._kLabelPaddingTop),
+        alignment: Alignment.bottomLeft,
+        child: Text(text),
+      );
+
+  // Swerski: the settings are grouped under headings — the Swerski Edition
+  // options first, then gameplay, display, power saving and the rest.
   @override
   Widget build(BuildContext context) {
     double screenWidth = MediaQuery.of(context).size.width;
@@ -78,62 +89,9 @@ class SettingsMenuState extends State<SettingsMenu> {
         child: Column(
           children: [
             Text(l10n.menuSettings, style: kTitleStyle),
-            Padding(
-              padding: const EdgeInsets.only(
-                  left: SettingsMenu._kLabelPaddingLeft,
-                  top: SettingsMenu._kLabelPaddingTop),
-              child: Row(
-                children: [
-                  Text(l10n.settingsLanguage),
-                  const SizedBox(width: 8),
-                  DropdownButton<String>(
-                    value: settings.locale.value,
-                    items: SettingsMenu._kLocales.entries
-                        .map((e) => DropdownMenuItem<String>(
-                              value: e.key,
-                              child: Text(e.value),
-                            ))
-                        .toList(),
-                    onChanged: (String? newLocale) {
-                      if (newLocale == null) return;
-                      setState(() {
-                        settings.locale.value = newLocale;
-                      });
-                      getIt<TranslationService>().load(newLocale);
-                      settings.saveToDisk();
-                    },
-                  ),
-                ],
-              ),
-            ),
-            SettingsCheckbox(
-                title: l10n.settingsDarkMode,
-                notifier: settings.darkMode,
-                onChanged: (v) {
-                  settings.darkMode.value = v;
-                  settings.saveToDisk();
-                }),
-            SettingsCheckbox(
-                title: l10n.settingsSoftNumpad,
-                notifier: settings.softNumpadInput,
-                onChanged: (v) {
-                  settings.softNumpadInput.value = v;
-                  settings.saveToDisk();
-                }),
-            SettingsCheckbox(
-                title: l10n.settingsNoInit,
-                notifier: settings.noInit,
-                onChanged: (v) {
-                  settings.noInit.value = v;
-                  settings.saveToDisk();
-                }),
-            SettingsCheckbox(
-                title: l10n.settingsExpireConditions,
-                notifier: settings.expireConditions,
-                onChanged: (v) {
-                  settings.expireConditions.value = v;
-                  settings.saveToDisk();
-                }),
+
+            // ── Swerski Edition ─────────────────────────────────────────
+            SettingsHeading(l10n.settingsGroupSwerski),
             SettingsCheckbox(
                 title: l10n.settingsPerStandeeTurns,
                 notifier: settings.perStandeeTurns,
@@ -167,6 +125,23 @@ class SettingsMenuState extends State<SettingsMenu> {
                 notifier: settings.turnGlow,
                 onChanged: (v) {
                   settings.turnGlow.value = v;
+                  settings.saveToDisk();
+                }),
+
+            // ── Gameplay ────────────────────────────────────────────────
+            SettingsHeading(l10n.settingsGroupGameplay),
+            SettingsCheckbox(
+                title: l10n.settingsNoInit,
+                notifier: settings.noInit,
+                onChanged: (v) {
+                  settings.noInit.value = v;
+                  settings.saveToDisk();
+                }),
+            SettingsCheckbox(
+                title: l10n.settingsExpireConditions,
+                notifier: settings.expireConditions,
+                onChanged: (v) {
+                  settings.expireConditions.value = v;
                   settings.saveToDisk();
                 }),
             SettingsCheckbox(
@@ -209,10 +184,188 @@ class SettingsMenuState extends State<SettingsMenu> {
                   _gameState.updateAllUI();
                 }),
             SettingsCheckbox(
+                title: l10n.settingsShowBattleGoalReminder,
+                notifier: settings.showBattleGoalReminder,
+                onChanged: (v) {
+                  settings.showBattleGoalReminder.value = v;
+                  settings.saveToDisk();
+                }),
+            SettingsCheckbox(
+                title: l10n.settingsShowReminders,
+                notifier: settings.showReminders,
+                onChanged: (v) {
+                  settings.showReminders.value = v;
+                  settings.saveToDisk();
+                  _gameState.updateAllUI();
+                }),
+            SettingsCheckbox(
+                title: l10n.settingsFhHazTerrainCalc,
+                notifier: settings.fhHazTerrainCalcInOGGloom,
+                onChanged: (v) {
+                  settings.fhHazTerrainCalcInOGGloom.value = v;
+                  settings.saveToDisk();
+                  _gameState.updateAllUI();
+                }),
+            SettingsCheckbox(
+                title: l10n.settingsAllyDeckOGGloom,
+                notifier: _gameState.allyDeckInOGGloom,
+                onChanged: (v) {
+                  _gameState.action(
+                      SetAllyDeckInOgGloomCommand(v, gameState: _gameState));
+                  _gameState.updateAllUI();
+                }),
+
+            // ── Display ─────────────────────────────────────────────────
+            SettingsHeading(l10n.settingsGroupDisplay),
+            Padding(
+              padding: const EdgeInsets.only(
+                  left: SettingsMenu._kLabelPaddingLeft,
+                  top: SettingsMenu._kLabelPaddingTop),
+              child: Row(
+                children: [
+                  Text(l10n.settingsLanguage),
+                  const SizedBox(width: 8),
+                  DropdownButton<String>(
+                    value: settings.locale.value,
+                    items: SettingsMenu._kLocales.entries
+                        .map((e) => DropdownMenuItem<String>(
+                              value: e.key,
+                              child: Text(e.value),
+                            ))
+                        .toList(),
+                    onChanged: (String? newLocale) {
+                      if (newLocale == null) return;
+                      setState(() {
+                        settings.locale.value = newLocale;
+                      });
+                      getIt<TranslationService>().load(newLocale);
+                      settings.saveToDisk();
+                    },
+                  ),
+                ],
+              ),
+            ),
+            SettingsCheckbox(
+                title: l10n.settingsDarkMode,
+                notifier: settings.darkMode,
+                onChanged: (v) {
+                  settings.darkMode.value = v;
+                  settings.saveToDisk();
+                }),
+            _label(l10n.settingsStyleLabel),
+            RadioGroup<Style>(
+              groupValue: settings.style.value,
+              onChanged: (value) {
+                if (value == null) return;
+                setState(() {
+                  settings.style.value = value;
+                  settings.saveToDisk();
+                  _gameState.updateList.notify();
+                });
+              },
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceAround,
+                children: [
+                  Row(
+                    children: [
+                      Radio<Style>(value: Style.frosthaven),
+                      Text(l10n.styleFrosthaven),
+                    ],
+                  ),
+                  Row(
+                    children: [
+                      Radio<Style>(value: Style.original),
+                      Text(l10n.styleOriginal),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+            _label(l10n.settingsMainListScaling),
+            Slider(
+              min: SettingsMenu._kScaleMin,
+              max: SettingsMenu._kScaleMax,
+              value: settings.userScalingMainList.value,
+              onChanged: (value) {
+                setState(() {
+                  settings.userScalingMainList.value = value;
+                  setMaxWidth();
+                  settings.saveToDisk();
+                  // Rebuild the board so the new scale applies immediately
+                  // (as the style toggle does); without this the list
+                  // keeps its old size until the next state change.
+                  _gameState.updateList.notify();
+                });
+              },
+            ),
+            _label(l10n.settingsAppBarScaling),
+            Slider(
+              min: min(SettingsMenu._kBarScaleMin, maxBarScale),
+              max: min(maxBarScale, SettingsMenu._kScaleMax),
+              value: min(settings.userScalingBars.value, maxBarScale),
+              onChanged: (value) {
+                setState(() {
+                  settings.userScalingBars.value = value;
+                  settings.saveToDisk();
+                  _gameState.updateList.notify();
+                });
+              },
+            ),
+            if (!Platform.isIOS)
+              SettingsCheckbox(
+                  title: l10n.settingsFullscreen,
+                  notifier: settings.fullScreen,
+                  onChanged: (v) {
+                    settings.setFullscreen(v);
+                    settings.saveToDisk();
+                  }),
+            SettingsCheckbox(
                 title: l10n.settingsHideLootDeck,
                 notifier: settings.hideLootDeck,
                 onChanged: (v) {
                   settings.hideLootDeck.value = v;
+                  settings.saveToDisk();
+                  _gameState.updateAllUI();
+                }),
+            SettingsCheckbox(
+                title: l10n.settingsShowAmdDeck,
+                notifier: settings.showAmdDeck,
+                onChanged: (v) {
+                  settings.showAmdDeck.value = v;
+                  if (!v) settings.showCharacterAMD.value = false;
+                  settings.saveToDisk();
+                  _gameState.updateAllUI();
+                }),
+            SettingsCheckbox(
+                title: l10n.settingsShowCharacterAmd,
+                notifier: settings.showCharacterAMD,
+                onChanged: (v) {
+                  settings.showCharacterAMD.value = v;
+                  if (v) settings.showAmdDeck.value = true;
+                  settings.saveToDisk();
+                  _gameState.updateAllUI();
+                }),
+            SettingsCheckbox(
+                title: l10n.settingsShowSections,
+                notifier: settings.showSectionsInMainView,
+                onChanged: (v) {
+                  settings.showSectionsInMainView.value = v;
+                  settings.saveToDisk();
+                  _gameState.updateAllUI();
+                }),
+            SettingsCheckbox(
+                title: l10n.settingsShowScenarioNames,
+                notifier: settings.showScenarioNames,
+                onChanged: (v) {
+                  settings.showScenarioNames.value = v;
+                  settings.saveToDisk();
+                  _gameState.updateAllUI();
+                }),
+            SettingsCheckbox(
+                title: l10n.settingsShowCustomContent,
+                notifier: settings.showCustomContent,
+                onChanged: (v) {
+                  settings.showCustomContent.value = v;
                   settings.saveToDisk();
                   _gameState.updateAllUI();
                 }),
@@ -224,15 +377,29 @@ class SettingsMenuState extends State<SettingsMenu> {
                   settings.saveToDisk();
                   _gameState.updateAllUI();
                 }),
-            Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Flexible(child: Text(l10n.settingsPowerModeLabel, style: kTitleStyle)),
-                SettingsInfoButton(
-                  infoTitle: l10n.settingsPowerModeInfoTitle,
-                  infoText: l10n.settingsPowerModeInfo,
-                ),
-              ],
+            SettingsCheckbox(
+                title: l10n.settingsHealthWheel,
+                notifier: settings.enableHeathWheel,
+                onChanged: (v) {
+                  settings.enableHeathWheel.value = v;
+                  settings.saveToDisk();
+                  _gameState.updateAllUI();
+                }),
+            SettingsCheckbox(
+                title: l10n.settingsSoftNumpad,
+                notifier: settings.softNumpadInput,
+                onChanged: (v) {
+                  settings.softNumpadInput.value = v;
+                  settings.saveToDisk();
+                }),
+
+            // ── Power saving ────────────────────────────────────────────
+            SettingsHeading(
+              l10n.settingsPowerModeLabel,
+              trailing: SettingsInfoButton(
+                infoTitle: l10n.settingsPowerModeInfoTitle,
+                infoText: l10n.settingsPowerModeInfo,
+              ),
             ),
             RadioGroup<PowerMode>(
               groupValue: settings.powerMode.value,
@@ -262,168 +429,9 @@ class SettingsMenuState extends State<SettingsMenu> {
                 ],
               ),
             ),
-            SettingsCheckbox(
-                title: l10n.settingsFhHazTerrainCalc,
-                notifier: settings.fhHazTerrainCalcInOGGloom,
-                onChanged: (v) {
-                  settings.fhHazTerrainCalcInOGGloom.value = v;
-                  settings.saveToDisk();
-                  _gameState.updateAllUI();
-                }),
-            SettingsCheckbox(
-                title: l10n.settingsAllyDeckOGGloom,
-                notifier: _gameState.allyDeckInOGGloom,
-                onChanged: (v) {
-                  _gameState.action(
-                      SetAllyDeckInOgGloomCommand(v, gameState: _gameState));
-                  _gameState.updateAllUI();
-                }),
-            SettingsCheckbox(
-                title: l10n.settingsShowScenarioNames,
-                notifier: settings.showScenarioNames,
-                onChanged: (v) {
-                  settings.showScenarioNames.value = v;
-                  settings.saveToDisk();
-                  _gameState.updateAllUI();
-                }),
-            SettingsCheckbox(
-                title: l10n.settingsShowBattleGoalReminder,
-                notifier: settings.showBattleGoalReminder,
-                onChanged: (v) {
-                  settings.showBattleGoalReminder.value = v;
-                  settings.saveToDisk();
-                }),
-            SettingsCheckbox(
-                title: l10n.settingsShowCustomContent,
-                notifier: settings.showCustomContent,
-                onChanged: (v) {
-                  settings.showCustomContent.value = v;
-                  settings.saveToDisk();
-                  _gameState.updateAllUI();
-                }),
-            SettingsCheckbox(
-                title: l10n.settingsShowSections,
-                notifier: settings.showSectionsInMainView,
-                onChanged: (v) {
-                  settings.showSectionsInMainView.value = v;
-                  settings.saveToDisk();
-                  _gameState.updateAllUI();
-                }),
-            SettingsCheckbox(
-                title: l10n.settingsShowReminders,
-                notifier: settings.showReminders,
-                onChanged: (v) {
-                  settings.showReminders.value = v;
-                  settings.saveToDisk();
-                  _gameState.updateAllUI();
-                }),
-            SettingsCheckbox(
-                title: l10n.settingsShowAmdDeck,
-                notifier: settings.showAmdDeck,
-                onChanged: (v) {
-                  settings.showAmdDeck.value = v;
-                  if (!v) settings.showCharacterAMD.value = false;
-                  settings.saveToDisk();
-                  _gameState.updateAllUI();
-                }),
-            SettingsCheckbox(
-                title: l10n.settingsShowCharacterAmd,
-                notifier: settings.showCharacterAMD,
-                onChanged: (v) {
-                  settings.showCharacterAMD.value = v;
-                  if (v) settings.showAmdDeck.value = true;
-                  settings.saveToDisk();
-                  _gameState.updateAllUI();
-                }),
-            SettingsCheckbox(
-                title: l10n.settingsHealthWheel,
-                notifier: settings.enableHeathWheel,
-                onChanged: (v) {
-                  settings.enableHeathWheel.value = v;
-                  settings.saveToDisk();
-                  _gameState.updateAllUI();
-                }),
-            if (!Platform.isIOS)
-              SettingsCheckbox(
-                  title: l10n.settingsFullscreen,
-                  notifier: settings.fullScreen,
-                  onChanged: (v) {
-                    settings.setFullscreen(v);
-                    settings.saveToDisk();
-                  }),
-            Container(
-              constraints: const BoxConstraints(minWidth: double.infinity),
-              padding: const EdgeInsets.only(
-                  left: SettingsMenu._kLabelPaddingLeft,
-                  top: SettingsMenu._kLabelPaddingTop),
-              alignment: Alignment.bottomLeft,
-              child: Text(l10n.settingsMainListScaling),
-            ),
-            Slider(
-              min: SettingsMenu._kScaleMin,
-              max: SettingsMenu._kScaleMax,
-              value: settings.userScalingMainList.value,
-              onChanged: (value) {
-                setState(() {
-                  settings.userScalingMainList.value = value;
-                  setMaxWidth();
-                  settings.saveToDisk();
-                  // Rebuild the board so the new scale applies immediately
-                  // (as the style toggle below does); without this the list
-                  // keeps its old size until the next state change.
-                  _gameState.updateList.notify();
-                });
-              },
-            ),
-            Container(
-              constraints: const BoxConstraints(minWidth: double.infinity),
-              padding: const EdgeInsets.only(
-                  left: SettingsMenu._kLabelPaddingLeft,
-                  top: SettingsMenu._kLabelPaddingTop),
-              alignment: Alignment.bottomLeft,
-              child: Text(l10n.settingsAppBarScaling),
-            ),
-            Slider(
-              min: min(SettingsMenu._kBarScaleMin, maxBarScale),
-              max: min(maxBarScale, SettingsMenu._kScaleMax),
-              value: min(settings.userScalingBars.value, maxBarScale),
-              onChanged: (value) {
-                setState(() {
-                  settings.userScalingBars.value = value;
-                  settings.saveToDisk();
-                  _gameState.updateList.notify();
-                });
-              },
-            ),
-            Text(l10n.settingsStyleLabel, style: kTitleStyle),
-            RadioGroup<Style>(
-              groupValue: settings.style.value,
-              onChanged: (value) {
-                if (value == null) return;
-                setState(() {
-                  settings.style.value = value;
-                  settings.saveToDisk();
-                  _gameState.updateList.notify();
-                });
-              },
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceAround,
-                children: [
-                  Row(
-                    children: [
-                      Radio<Style>(value: Style.frosthaven),
-                      Text(l10n.styleFrosthaven),
-                    ],
-                  ),
-                  Row(
-                    children: [
-                      Radio<Style>(value: Style.original),
-                      Text(l10n.styleOriginal),
-                    ],
-                  ),
-                ],
-              ),
-            ),
+
+            // ── Other ───────────────────────────────────────────────────
+            SettingsHeading(l10n.settingsGroupOther),
             ListTile(
                 title: Text(l10n.settingsClearUnlocked),
                 onTap: () {

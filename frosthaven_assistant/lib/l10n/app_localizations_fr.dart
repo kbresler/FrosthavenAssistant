@@ -196,6 +196,18 @@ class AppLocalizationsFr extends AppLocalizations {
   String get settingsNoInit => 'Ne pas demander l\'initiative';
 
   @override
+  String get settingsGroupSwerski => 'Swerski Edition';
+
+  @override
+  String get settingsGroupGameplay => 'Gameplay';
+
+  @override
+  String get settingsGroupDisplay => 'Display';
+
+  @override
+  String get settingsGroupOther => 'Other';
+
+  @override
   String get settingsExpireConditions => 'Expirer les conditions';
 
   @override

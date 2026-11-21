@@ -197,6 +197,18 @@ class AppLocalizationsRu extends AppLocalizations {
   String get settingsNoInit => 'Не запрашивать инициативу';
 
   @override
+  String get settingsGroupSwerski => 'Swerski Edition';
+
+  @override
+  String get settingsGroupGameplay => 'Gameplay';
+
+  @override
+  String get settingsGroupDisplay => 'Display';
+
+  @override
+  String get settingsGroupOther => 'Other';
+
+  @override
   String get settingsExpireConditions => 'Истечение состояний';
 
   @override

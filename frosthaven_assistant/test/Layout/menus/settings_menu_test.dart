@@ -57,7 +57,44 @@ void main() {
     testWidgets('renders Expire Conditions checkbox',
         (WidgetTester tester) async {
       await pumpMenu(tester);
-      expect(find.text('Expire Conditions'), findsOneWidget);
+      expect(find.text('Remove conditions when they expire'), findsOneWidget);
+    });
+
+    testWidgets('groups settings under headings, Swerski Edition first',
+        (WidgetTester tester) async {
+      await pumpMenu(tester);
+      final headings = ['Swerski Edition', 'Gameplay', 'Display', 'Other'];
+      final tops = [
+        for (final h in headings) tester.getTopLeft(find.text(h)).dy,
+      ];
+      for (int i = 1; i < tops.length; i++) {
+        expect(tops[i], greaterThan(tops[i - 1]),
+            reason: '${headings[i]} should come after ${headings[i - 1]}');
+      }
+      // The Swerski options sit right under their heading.
+      expect(
+          tester
+              .getTopLeft(find.text('Monster turns one standee at a time'))
+              .dy,
+          lessThan(tops[1]));
+    });
+
+    testWidgets('fixes the heath wheel typo', (WidgetTester tester) async {
+      await pumpMenu(tester);
+      expect(find.textContaining('heath'), findsNothing);
+      expect(find.textContaining('Health wheel'), findsOneWidget);
+    });
+
+    testWidgets("Don't ask for initiative is ticked when noInit is on",
+        (WidgetTester tester) async {
+      final settings = getIt<Settings>();
+      final before = settings.noInit.value;
+      addTearDown(() => settings.noInit.value = before);
+      settings.noInit.value = true;
+      await pumpMenu(tester);
+      final tile = tester.widget<CheckboxListTile>(
+          find.widgetWithText(CheckboxListTile, "Don't ask for initiative"));
+      expect(tile.value, isTrue);
     });
 
     testWidgets('renders Close button', (WidgetTester tester) async {
@@ -71,7 +108,9 @@ void main() {
       final before = settings.darkMode.value;
       await pumpMenu(tester);
 
-      await tester.tap(find.widgetWithText(CheckboxListTile, 'Dark mode'));
+      final finder = find.widgetWithText(CheckboxListTile, 'Dark mode');
+      await tester.ensureVisible(finder);
+      await tester.tap(finder);
       await tester.pump();
 
       expect(settings.darkMode.value, !before);
@@ -85,8 +124,10 @@ void main() {
       final before = settings.expireConditions.value;
       await pumpMenu(tester);
 
-      await tester
-          .tap(find.widgetWithText(CheckboxListTile, 'Expire Conditions'));
+      final finder = find.widgetWithText(
+          CheckboxListTile, 'Remove conditions when they expire');
+      await tester.ensureVisible(finder);
+      await tester.tap(finder);
       await tester.pump();
 
       expect(settings.expireConditions.value, !before);
@@ -99,8 +140,10 @@ void main() {
       final before = settings.softNumpadInput.value;
       await pumpMenu(tester);
 
-      await tester
-          .tap(find.widgetWithText(CheckboxListTile, 'Soft numpad for input'));
+      final finder = find.widgetWithText(
+          CheckboxListTile, 'On-screen number pad for typing numbers');
+      await tester.ensureVisible(finder);
+      await tester.tap(finder);
       await tester.pump();
 
       expect(settings.softNumpadInput.value, !before);
@@ -113,8 +156,10 @@ void main() {
       final before = settings.noInit.value;
       await pumpMenu(tester);
 
-      await tester.tap(
-          find.widgetWithText(CheckboxListTile, "Don't ask for initiative"));
+      final finder =
+          find.widgetWithText(CheckboxListTile, "Don't ask for initiative");
+      await tester.ensureVisible(finder);
+      await tester.tap(finder);
       await tester.pump();
 
       expect(settings.noInit.value, !before);
@@ -128,7 +173,7 @@ void main() {
       await pumpMenu(tester);
 
       final finder =
-          find.widgetWithText(CheckboxListTile, 'Auto Add Standees');
+          find.widgetWithText(CheckboxListTile, 'Auto-add standees');
       await tester.ensureVisible(finder);
       await tester.tap(finder);
       await tester.pump();
@@ -143,7 +188,7 @@ void main() {
       final before = settings.randomStandees.value;
       await pumpMenu(tester);
 
-      final finder = find.widgetWithText(CheckboxListTile, 'Random Standees');
+      final finder = find.widgetWithText(CheckboxListTile, 'Random standee numbers');
       await tester.ensureVisible(finder);
       await tester.tap(finder);
       await tester.pump();
@@ -158,7 +203,7 @@ void main() {
       final before = settings.noCalculation.value;
       await pumpMenu(tester);
 
-      final finder = find.widgetWithText(CheckboxListTile, 'No Calculations');
+      final finder = find.widgetWithText(CheckboxListTile, 'No calculations');
       await tester.ensureVisible(finder);
       await tester.tap(finder);
       await tester.pump();
@@ -174,7 +219,7 @@ void main() {
       await pumpMenu(tester);
 
       final finder =
-          find.widgetWithText(CheckboxListTile, "Don't track Standees");
+          find.widgetWithText(CheckboxListTile, "Don't track standees");
       await tester.ensureVisible(finder);
       await tester.tap(finder);
       await tester.pump();
@@ -190,7 +235,7 @@ void main() {
       await pumpMenu(tester);
 
       final finder =
-          find.widgetWithText(CheckboxListTile, 'Auto Add Timed Spawns');
+          find.widgetWithText(CheckboxListTile, 'Auto-add timed spawns');
       await tester.ensureVisible(finder);
       await tester.tap(finder);
       await tester.pump();
@@ -205,7 +250,7 @@ void main() {
       final before = settings.hideLootDeck.value;
       await pumpMenu(tester);
 
-      final finder = find.widgetWithText(CheckboxListTile, 'Hide Loot Deck');
+      final finder = find.widgetWithText(CheckboxListTile, 'Hide loot deck');
       await tester.ensureVisible(finder);
       await tester.tap(finder);
       await tester.pump();
@@ -237,7 +282,7 @@ void main() {
       await pumpMenu(tester);
 
       final finder =
-          find.widgetWithText(CheckboxListTile, 'Show Scenario names in list');
+          find.widgetWithText(CheckboxListTile, 'Show scenario names in the scenario list');
       await tester.ensureVisible(finder);
       await tester.tap(finder);
       await tester.pump();
@@ -253,7 +298,7 @@ void main() {
       await pumpMenu(tester);
 
       final finder =
-          find.widgetWithText(CheckboxListTile, 'Show Battle Goal Reminder');
+          find.widgetWithText(CheckboxListTile, 'Remind to choose Battle Goals');
       await tester.ensureVisible(finder);
       await tester.tap(finder);
       await tester.pump();
@@ -269,7 +314,7 @@ void main() {
       await pumpMenu(tester);
 
       final finder =
-          find.widgetWithText(CheckboxListTile, 'Show Custom Content');
+          find.widgetWithText(CheckboxListTile, 'Show custom content');
       await tester.ensureVisible(finder);
       await tester.tap(finder);
       await tester.pump();
@@ -285,7 +330,7 @@ void main() {
       await pumpMenu(tester);
 
       final finder =
-          find.widgetWithText(CheckboxListTile, 'Show Sections in Main Screen');
+          find.widgetWithText(CheckboxListTile, 'Show sections on the main screen');
       await tester.ensureVisible(finder);
       await tester.tap(finder);
       await tester.pump();
@@ -302,7 +347,7 @@ void main() {
       await pumpMenu(tester);
 
       final finder = find.widgetWithText(
-          CheckboxListTile, 'Show Round Special Rule Reminders');
+          CheckboxListTile, 'Remind of special rules each round');
       await tester.ensureVisible(finder);
       await tester.tap(finder);
       await tester.pump();
@@ -318,7 +363,7 @@ void main() {
       await pumpMenu(tester);
 
       final finder =
-          find.widgetWithText(CheckboxListTile, 'Show Attack Modifier Decks');
+          find.widgetWithText(CheckboxListTile, 'Show attack modifier decks');
       await tester.ensureVisible(finder);
       await tester.tap(finder);
       await tester.pump();
@@ -335,7 +380,7 @@ void main() {
       await pumpMenu(tester);
 
       final finder = find.widgetWithText(
-          CheckboxListTile, 'Show character Attack Modifier Decks');
+          CheckboxListTile, 'Show character attack modifier decks');
       await tester.ensureVisible(finder);
       await tester.tap(finder);
       await tester.pump();
@@ -369,12 +414,12 @@ void main() {
       await pumpMenu(tester);
 
       final finder =
-          find.widgetWithText(ListTile, 'Clear unlocked characters and stuff');
+          find.widgetWithText(ListTile, 'Clear unlocked characters');
       await tester.ensureVisible(finder);
       await tester.tap(finder);
       await tester.pump();
       expect(
-          find.widgetWithText(ListTile, 'Clear unlocked characters and stuff'),
+          find.widgetWithText(ListTile, 'Clear unlocked characters'),
           findsOneWidget);
     });
 
@@ -382,7 +427,7 @@ void main() {
         (WidgetTester tester) async {
       await pumpMenu(tester);
 
-      final finder = find.widgetWithText(ListTile, 'Load/Save State');
+      final finder = find.widgetWithText(ListTile, 'Load or save game');
       await tester.ensureVisible(finder);
       await tester.tap(finder);
       await tester.pumpAndSettle();
@@ -398,7 +443,7 @@ void main() {
       await pumpMenu(tester);
 
       final finder = find.widgetWithText(
-          CheckboxListTile, 'Use Ally Attack Modifier Deck in OG Gloomhaven');
+          CheckboxListTile, 'Ally attack modifier deck in original Gloomhaven');
       await tester.ensureVisible(finder);
       await tester.tap(finder);
       await tester.pump();
