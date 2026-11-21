@@ -102,12 +102,7 @@ class StatusMenuStatColumnViewModel {
 
   bool get isAlly => deck.name == "allies";
 
-  bool get canBeCursed {
-    for (final item in immunities) {
-      if (item.substring(1, item.length - 1) == "curse") return false;
-    }
-    return true;
-  }
+  bool get canBeCursed => !GameMethods.hasImmunity(immunities, "curse");
 
   int get nrOfEnfeebles {
     int n = 0;

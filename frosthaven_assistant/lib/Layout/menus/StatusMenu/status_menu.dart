@@ -6,6 +6,7 @@ import '../../../Resource/state/game_state.dart';
 import '../../../Resource/ui_utils.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../services/service_locator.dart';
+import '../../attack_mode/attack_mode_controller.dart';
 import '../../view_models/status_menu_view_model.dart';
 import '../../widgets/modal_background.dart';
 import '../note_row_menu.dart';
@@ -101,6 +102,29 @@ class StatusMenuState extends State<StatusMenu> {
     );
   }
 
+  /// Swerski: starts attack mode with this standee already picked. Only for
+  /// monster standees, never summons or characters.
+  Widget _buildAttackSeveralButton(
+      BuildContext context, StatusMenuViewModel vm, double scale) {
+    final fig = vm.figure;
+    if (!_settings.attackSeveral.value ||
+        !vm.isMonster ||
+        vm.isCharacter ||
+        fig is! MonsterInstance) {
+      return const SizedBox.shrink();
+    }
+    final l10n = AppLocalizations.of(context)!;
+    return TextButton.icon(
+      onPressed: () {
+        Navigator.of(context).pop();
+        attackModeController().startSelecting(first: fig, ownerId: vm.ownerId);
+      },
+      icon: Image.asset('assets/images/abilities/attack_black.png',
+          height: 18 * scale),
+      label: Text(l10n.attackSeveralMenu, style: getButtonTextStyle(scale)),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return ListenableBuilder(
@@ -190,6 +214,7 @@ class StatusMenuState extends State<StatusMenu> {
                   ),
                   _buildNoteButton(context, vm, scale),
                   _buildAddNoteButton(context, vm, scale),
+                  _buildAttackSeveralButton(context, vm, scale),
                 ],
               ),
             ),

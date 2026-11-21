@@ -16,6 +16,8 @@ import '../Resource/ui_utils.dart';
 import '../services/service_locator.dart';
 import 'LootDeckWidget/loot_deck_widget.dart';
 import 'MainList/main_list.dart';
+import 'attack_mode/attack_mode_controller.dart';
+import 'attack_mode/attack_mode_panel.dart';
 import 'bottom_bar.dart';
 import 'bottom_overlay.dart';
 import 'character_amds_widget.dart';
@@ -141,6 +143,10 @@ class MainScaffoldBody extends StatelessWidget {
   final Settings? settings;
   final GameData? gameData;
 
+  static bool _attackShowing(Settings? settings) =>
+      (settings ?? getIt<Settings>()).attackSeveral.value &&
+      attackModeController().isAttacking;
+
   @override
   Widget build(BuildContext context) {
     final vm = MainScaffoldViewModel(
@@ -152,8 +158,34 @@ class MainScaffoldBody extends StatelessWidget {
         builder: (context, isLoading, child) {
           return Stack(
             children: [
-              if (!isLoading) const MainList(),
+              // Swerski: attack mode covers the board (which stays where it
+              // was, scroll position and all) while standees are attacked.
+              if (!isLoading)
+                ListenableBuilder(
+                    listenable: Listenable.merge([
+                      (settings ?? getIt<Settings>()).attackSeveral,
+                      attackModeController().phase
+                    ]),
+                    // Hidden, not removed, and keeping its size: an Offstage
+                    // board is 0x0 and would shrink this whole Stack, so the
+                    // attack screen would get no room (a blank white view).
+                    builder: (context, _) => Visibility(
+                        visible: !_attackShowing(settings),
+                        maintainState: true,
+                        maintainAnimation: true,
+                        maintainSize: true,
+                        child: const MainList())),
               if (!isLoading) const EmptyBoardPrompt(),
+              if (!isLoading)
+                Positioned.fill(
+                    child: ListenableBuilder(
+                        listenable: Listenable.merge([
+                          (settings ?? getIt<Settings>()).attackSeveral,
+                          attackModeController().phase
+                        ]),
+                        builder: (context, _) => _attackShowing(settings)
+                            ? const AttackModePanel()
+                            : const SizedBox.shrink())),
               if (isLoading)
                 BackGround(
                     child: const Center(

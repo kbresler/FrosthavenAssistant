@@ -521,6 +521,156 @@ abstract class AppLocalizations {
   /// **'Parchment menus and popups'**
   String get settingsParchmentMenus;
 
+  /// No description provided for @settingsAttackSeveral.
+  ///
+  /// In en, this message translates to:
+  /// **'Attack several monsters at once'**
+  String get settingsAttackSeveral;
+
+  /// No description provided for @attackSeveralMenu.
+  ///
+  /// In en, this message translates to:
+  /// **'Attack several…'**
+  String get attackSeveralMenu;
+
+  /// No description provided for @attackSeveralTooltip.
+  ///
+  /// In en, this message translates to:
+  /// **'Attack several monsters'**
+  String get attackSeveralTooltip;
+
+  /// No description provided for @attackSelectedCount.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} selected'**
+  String attackSelectedCount(int count);
+
+  /// No description provided for @attackCancel.
+  ///
+  /// In en, this message translates to:
+  /// **'Cancel'**
+  String get attackCancel;
+
+  /// No description provided for @attackHeader.
+  ///
+  /// In en, this message translates to:
+  /// **'Attacking {active} of {total}'**
+  String attackHeader(int active, int total);
+
+  /// No description provided for @attackUndo.
+  ///
+  /// In en, this message translates to:
+  /// **'Undo'**
+  String get attackUndo;
+
+  /// No description provided for @attackUndoWith.
+  ///
+  /// In en, this message translates to:
+  /// **'Undo {what}'**
+  String attackUndoWith(String what);
+
+  /// No description provided for @attackDone.
+  ///
+  /// In en, this message translates to:
+  /// **'Done'**
+  String get attackDone;
+
+  /// No description provided for @attackSelectAll.
+  ///
+  /// In en, this message translates to:
+  /// **'Select all'**
+  String get attackSelectAll;
+
+  /// No description provided for @attackSelectNone.
+  ///
+  /// In en, this message translates to:
+  /// **'Select none'**
+  String get attackSelectNone;
+
+  /// No description provided for @attackHoldHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Hold a standee for just that one.'**
+  String get attackHoldHint;
+
+  /// No description provided for @attackHealthEach.
+  ///
+  /// In en, this message translates to:
+  /// **'Health, each'**
+  String get attackHealthEach;
+
+  /// No description provided for @attackBless.
+  ///
+  /// In en, this message translates to:
+  /// **'Bless'**
+  String get attackBless;
+
+  /// No description provided for @attackCurse.
+  ///
+  /// In en, this message translates to:
+  /// **'Curse'**
+  String get attackCurse;
+
+  /// No description provided for @attackChill.
+  ///
+  /// In en, this message translates to:
+  /// **'Chill'**
+  String get attackChill;
+
+  /// No description provided for @attackHarmful.
+  ///
+  /// In en, this message translates to:
+  /// **'Harmful'**
+  String get attackHarmful;
+
+  /// No description provided for @attackHelpful.
+  ///
+  /// In en, this message translates to:
+  /// **'Helpful'**
+  String get attackHelpful;
+
+  /// No description provided for @attackMarks.
+  ///
+  /// In en, this message translates to:
+  /// **'Character marks'**
+  String get attackMarks;
+
+  /// No description provided for @attackKilled.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} killed'**
+  String attackKilled(int count);
+
+  /// No description provided for @attackNone.
+  ///
+  /// In en, this message translates to:
+  /// **'none'**
+  String get attackNone;
+
+  /// No description provided for @attackAll.
+  ///
+  /// In en, this message translates to:
+  /// **'all'**
+  String get attackAll;
+
+  /// No description provided for @attackInTotal.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} in total'**
+  String attackInTotal(int count);
+
+  /// No description provided for @attackDeckAndLeft.
+  ///
+  /// In en, this message translates to:
+  /// **'{deck} · {left} left'**
+  String attackDeckAndLeft(String deck, int left);
+
+  /// No description provided for @attackInDeck.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} in the deck'**
+  String attackInDeck(int count);
+
   /// No description provided for @settingsGameStyleMessages.
   ///
   /// In en, this message translates to:

@@ -230,6 +230,95 @@ class AppLocalizationsEs extends AppLocalizations {
   String get settingsParchmentMenus => 'Parchment menus and popups';
 
   @override
+  String get settingsAttackSeveral => 'Attack several monsters at once';
+
+  @override
+  String get attackSeveralMenu => 'Attack several…';
+
+  @override
+  String get attackSeveralTooltip => 'Attack several monsters';
+
+  @override
+  String attackSelectedCount(int count) {
+    return '$count selected';
+  }
+
+  @override
+  String get attackCancel => 'Cancel';
+
+  @override
+  String attackHeader(int active, int total) {
+    return 'Attacking $active of $total';
+  }
+
+  @override
+  String get attackUndo => 'Undo';
+
+  @override
+  String attackUndoWith(String what) {
+    return 'Undo $what';
+  }
+
+  @override
+  String get attackDone => 'Done';
+
+  @override
+  String get attackSelectAll => 'Select all';
+
+  @override
+  String get attackSelectNone => 'Select none';
+
+  @override
+  String get attackHoldHint => 'Hold a standee for just that one.';
+
+  @override
+  String get attackHealthEach => 'Health, each';
+
+  @override
+  String get attackBless => 'Bless';
+
+  @override
+  String get attackCurse => 'Curse';
+
+  @override
+  String get attackChill => 'Chill';
+
+  @override
+  String get attackHarmful => 'Harmful';
+
+  @override
+  String get attackHelpful => 'Helpful';
+
+  @override
+  String get attackMarks => 'Character marks';
+
+  @override
+  String attackKilled(int count) {
+    return '$count killed';
+  }
+
+  @override
+  String get attackNone => 'none';
+
+  @override
+  String get attackAll => 'all';
+
+  @override
+  String attackInTotal(int count) {
+    return '$count in total';
+  }
+
+  @override
+  String attackDeckAndLeft(String deck, int left) {
+    return '$deck · $left left';
+  }
+
+  @override
+  String attackInDeck(int count) {
+    return '$count in the deck';
+  }
+
+  @override
   String get settingsGameStyleMessages => 'Parchment message banner';
 
   @override

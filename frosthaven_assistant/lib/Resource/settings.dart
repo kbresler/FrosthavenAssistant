@@ -42,6 +42,8 @@ class Settings {
   final turnGlow = ValueNotifier<bool>(true);
   // Swerski: parchment menus and popups with a dark-red accent.
   final parchmentMenus = ValueNotifier<bool>(true);
+  // Swerski: apply health and conditions to several standees at once.
+  final attackSeveral = ValueNotifier<bool>(true);
   final hideLootDeck = ValueNotifier<bool>(false);
   final shimmer = ValueNotifier<bool>(
       (Platform.isWindows || Platform.isLinux || Platform.isMacOS));
@@ -303,6 +305,9 @@ class Settings {
       if (data["parchmentMenus"] != null) {
         parchmentMenus.value = data["parchmentMenus"];
       }
+      if (data["attackSeveral"] != null) {
+        attackSeveral.value = data["attackSeveral"];
+      }
       if (data["lastKnownConnection"] != null) {
         lastKnownConnection = data["lastKnownConnection"];
       }
@@ -411,6 +416,7 @@ class Settings {
         '"gameStyleMessages": ${gameStyleMessages.value}, '
         '"turnGlow": ${turnGlow.value}, '
         '"parchmentMenus": ${parchmentMenus.value}, '
+        '"attackSeveral": ${attackSeveral.value}, '
         '"hideLootDeck": ${hideLootDeck.value}, '
         '"style": ${style.value.index}, '
         '"darkMode": ${darkMode.value}, '

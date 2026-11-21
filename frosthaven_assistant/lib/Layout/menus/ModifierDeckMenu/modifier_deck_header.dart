@@ -1,3 +1,4 @@
+import '../../../Resource/game_methods.dart';
 import 'dart:math';
 
 import 'package:flutter/material.dart';
@@ -306,7 +307,9 @@ class ModifierDeckHeader extends StatelessWidget {
           CounterButton(
             notifier: deck.getRemovable("bless"),
             command: ChangeBlessCommand.deck(deck, gameState: gameState),
-            maxValue: _kMaxBlessCurse,
+            maxValue: GameMethods.blessCurseSupply,
+            maxValueOf: () => deck.getRemovable("bless").value +
+                GameMethods.blessCurseLeft("bless", deck, gameState: gameState),
             image: "assets/images/abilities/bless.png",
             showTotalValue: true,
             color: Colors.white,
@@ -317,7 +320,9 @@ class ModifierDeckHeader extends StatelessWidget {
           CounterButton(
             notifier: deck.getRemovable("curse"),
             command: ChangeCurseCommand.deck(deck, gameState: gameState),
-            maxValue: _kMaxBlessCurse,
+            maxValue: GameMethods.blessCurseSupply,
+            maxValueOf: () => deck.getRemovable("curse").value +
+                GameMethods.blessCurseLeft("curse", deck, gameState: gameState),
             image: "assets/images/abilities/curse.png",
             showTotalValue: true,
             color: Colors.white,

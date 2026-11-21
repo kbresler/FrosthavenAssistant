@@ -3,6 +3,7 @@ import 'package:frosthaven_assistant/Resource/state/game_state.dart';
 import 'package:frosthaven_assistant/Resource/ui_utils.dart';
 
 import '../Resource/commands/set_scenario_command.dart';
+import 'attack_mode/attack_mode_controller.dart';
 import '../Resource/settings.dart';
 import '../services/service_locator.dart';
 
@@ -26,9 +27,14 @@ class SectionButton extends StatelessWidget {
     final gameState = this.gameState ?? getIt<GameState>();
     final settings = this.settings ?? getIt<Settings>();
     double scale = settings.userScalingBars.value;
-    return ValueListenableBuilder<int>(
-        valueListenable: gameState.scenarioSectionsVersion,
-        builder: (context, value, child) {
+    final attack = attackModeController();
+    return ListenableBuilder(
+        listenable: Listenable.merge(
+            [gameState.scenarioSectionsVersion, attack.phase]),
+        builder: (context, child) {
+          // Swerski: adding a section changes the board, so not while picking
+          // or attacking standees.
+          final locked = attack.phase.value != AttackPhase.off;
           return RepaintBoundary(
               child: OutlinedButton(
             style: OutlinedButton.styleFrom(
@@ -40,7 +46,7 @@ class SectionButton extends StatelessWidget {
               backgroundColor: Colors.grey.shade400,
               elevation: _kElevation,
             ),
-            onPressed: !gameState.scenarioSectionsAdded.contains(data)
+            onPressed: !locked && !gameState.scenarioSectionsAdded.contains(data)
                 ? () {
                     gameState.action(
                         SetScenarioCommand(data, true, gameState: gameState));

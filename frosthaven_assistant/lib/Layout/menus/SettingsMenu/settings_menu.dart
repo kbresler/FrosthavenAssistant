@@ -134,6 +134,13 @@ class SettingsMenuState extends State<SettingsMenu> {
                   settings.parchmentMenus.value = v;
                   settings.saveToDisk();
                 }),
+            SettingsCheckbox(
+                title: l10n.settingsAttackSeveral,
+                notifier: settings.attackSeveral,
+                onChanged: (v) {
+                  settings.attackSeveral.value = v;
+                  settings.saveToDisk();
+                }),
 
             // ── Gameplay ────────────────────────────────────────────────
             SettingsHeading(l10n.settingsGroupGameplay),

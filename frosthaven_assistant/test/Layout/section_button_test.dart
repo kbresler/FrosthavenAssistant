@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:frosthaven_assistant/Layout/attack_mode/attack_mode_controller.dart';
 import 'package:frosthaven_assistant/Layout/section_button.dart';
 import 'package:frosthaven_assistant/Resource/commands/set_scenario_command.dart';
 import 'package:frosthaven_assistant/Resource/state/game_state.dart';
@@ -49,6 +50,24 @@ void main() {
       await pumpWidget(tester, 'test-enabled-section');
       final button = tester.widget<OutlinedButton>(find.byType(OutlinedButton));
       expect(button.onPressed, isNotNull);
+    });
+
+    testWidgets('Swerski: locked while picking or attacking, free again after',
+        (WidgetTester tester) async {
+      final attack = attackModeController();
+      addTearDown(attack.end);
+      await pumpWidget(tester, 'test-attack-lock-section');
+      OutlinedButton button() =>
+          tester.widget<OutlinedButton>(find.byType(OutlinedButton));
+      expect(button().onPressed, isNotNull);
+
+      attack.startSelecting();
+      await tester.pump();
+      expect(button().onPressed, isNull);
+
+      attack.end();
+      await tester.pump();
+      expect(button().onPressed, isNotNull);
     });
 
     testWidgets('button is disabled after section is added via command',

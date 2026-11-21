@@ -387,6 +387,43 @@ class GameMethods {
     return available[Random().nextInt(available.length)];
   }
 
+  /// Whether a monster's [immunities] (written like "%curse%") include [name].
+  static bool hasImmunity(List<String> immunities, String name) => immunities
+      .any((item) => item.substring(1, item.length - 1) == name);
+
+  /// There are ten bless cards in the whole game, shared by every modifier
+  /// deck (heroes', allies' and monsters'). Curses are two pools of ten: the
+  /// monster curses go only in the monster deck, the star curses only in the
+  /// heroes' and allies' decks. A card that has been drawn goes back to its
+  /// pool, which here just means it is no longer in a deck.
+  static const int blessCurseSupply = 10;
+
+  /// How many more bless (or curse) cards can be put into [deck], given what
+  /// the other decks of its pool hold. [pending] counts cards about to be
+  /// added (or removed) per deck, for callers that add several at once.
+  static int blessCurseLeft(String id, ModifierDeck deck,
+      {Map<ModifierDeck, int>? pending, GameState? gameState}) {
+    final gs = gameState ?? getIt<GameState>();
+    final all = <ModifierDeck>{
+      gs.modifierDeck,
+      gs.modifierDeckAllies,
+      for (final item in gs.currentList)
+        if (item is Character) item.characterState.modifierDeck,
+      deck,
+    };
+    final Iterable<ModifierDeck> pool;
+    if (id == 'bless') {
+      pool = all;
+    } else if (identical(deck, gs.modifierDeck)) {
+      pool = [deck];
+    } else {
+      pool = all.where((d) => !identical(d, gs.modifierDeck));
+    }
+    final used = pool.fold<int>(
+        0, (sum, d) => sum + d.getRemovable(id).value + (pending?[d] ?? 0));
+    return max(0, blessCurseSupply - used);
+  }
+
   static FigureState? getFigure(
     String? ownerId,
     String figureId, {

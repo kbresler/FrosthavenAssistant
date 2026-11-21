@@ -5,6 +5,8 @@ import 'package:frosthaven_assistant/Resource/state/game_state.dart';
 import '../../Resource/game_methods.dart';
 import '../../Resource/settings.dart';
 import '../../Resource/ui_utils.dart';
+import '../attack_mode/attack_mode_controller.dart';
+import '../attack_mode/attack_pick_outline.dart';
 import '../health_wheel_controller.dart';
 import '../menus/StatusMenu/status_menu.dart';
 import '../view_models/monster_box_view_model.dart';
@@ -131,11 +133,20 @@ class MonsterBox extends StatelessWidget {
       ),
     );
 
-    return Material(
+    final standeeOwner = ownerId ?? data.name;
+    // Swerski: a monster standee (not a summon) that attack mode can pick.
+    final pickable = vm.characterId == null;
+    return AttackPickOutline(
+        ownerId: standeeOwner,
+        figureId: data.getId(),
+        child: Material(
       color: Colors.transparent,
       child: InkWell(
         onTap: () {
-          if (!blockInput) {
+          final attack = attackModeController();
+          if (!blockInput && pickable && attack.isSelecting) {
+            attack.togglePick(data, standeeOwner);
+          } else if (!blockInput) {
             openDialog(
               context,
               StatusMenu(
@@ -154,6 +165,6 @@ class MonsterBox extends StatelessWidget {
               )
             : innerWidget,
       ),
-    );
+    ));
   }
 }

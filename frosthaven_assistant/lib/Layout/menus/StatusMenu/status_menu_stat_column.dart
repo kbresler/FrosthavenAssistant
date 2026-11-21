@@ -1,3 +1,4 @@
+import '../../../Resource/game_methods.dart';
 import 'package:flutter/material.dart';
 
 import '../../../Resource/app_constants.dart';
@@ -130,7 +131,9 @@ class StatusMenuStatColumn extends StatelessWidget {
                     notifier: deck.getRemovable("bless"),
                     command: ChangeBlessCommand(0, figureId, ownerId,
                         gameState: gameState),
-                    maxValue: _kMaxBlessCurse,
+                    maxValue: GameMethods.blessCurseSupply,
+                    maxValueOf: () => deck.getRemovable("bless").value +
+                        GameMethods.blessCurseLeft("bless", deck, gameState: gameState),
                     image: "assets/images/abilities/bless.png",
                     showTotalValue: true,
                     color: Colors.white,
@@ -143,7 +146,9 @@ class StatusMenuStatColumn extends StatelessWidget {
                     notifier: deck.getRemovable("curse"),
                     command: ChangeCurseCommand(0, figureId, ownerId,
                         gameState: gameState),
-                    maxValue: _kMaxBlessCurse,
+                    maxValue: GameMethods.blessCurseSupply,
+                    maxValueOf: () => deck.getRemovable("curse").value +
+                        GameMethods.blessCurseLeft("curse", deck, gameState: gameState),
                     image: "assets/images/abilities/curse.png",
                     showTotalValue: true,
                     color: Colors.white,

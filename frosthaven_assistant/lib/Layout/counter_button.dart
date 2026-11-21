@@ -22,11 +22,17 @@ class CounterButton extends StatefulWidget {
       required this.figureId,
       required this.ownerId,
       required this.scale,
-      this.extraImage});
+      this.extraImage,
+      this.maxValueOf});
 
   final ValueListenable<int> notifier;
   final ChangeStatCommand command;
   final int maxValue;
+
+  /// A limit looked up at the moment of the tap, for counters whose limit
+  /// depends on other state (bless and curse draw on a fixed supply shared
+  /// between decks). When given, it replaces [maxValue].
+  final int Function()? maxValueOf;
   final String image;
   final String figureId;
   final String? ownerId;
@@ -137,7 +143,7 @@ class CounterButtonState extends State<CounterButton> {
             onPressed: () {
               final value = widget.notifier.value;
               widget.command.setChange(1);
-              if (value < widget.maxValue) {
+              if (value < (widget.maxValueOf?.call() ?? widget.maxValue)) {
                 totalChangeValue.value++;
                 _vm.executeCommand(widget.command);
                 if (widget.figureId != "unknown" &&
