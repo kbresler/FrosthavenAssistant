@@ -149,6 +149,13 @@ class SettingsMenuState extends State<SettingsMenu> {
                   settings.saveToDisk();
                 }),
             SettingsCheckbox(
+                title: l10n.settingsStandeeChips,
+                notifier: settings.standeeChips,
+                onChanged: (v) {
+                  settings.standeeChips.value = v;
+                  settings.saveToDisk();
+                }),
+            SettingsCheckbox(
                 title: l10n.settingsNoStandees,
                 notifier: settings.noStandees,
                 onChanged: (v) {

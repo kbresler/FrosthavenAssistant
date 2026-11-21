@@ -34,6 +34,8 @@ class Settings {
   final expireConditions = ValueNotifier<bool>(true);
   final perStandeeTurns = ValueNotifier<bool>(true);
   final autoApplyWounds = ValueNotifier<bool>(true);
+  // Swerski: solid number chips in the add standee popup.
+  final standeeChips = ValueNotifier<bool>(true);
   final hideLootDeck = ValueNotifier<bool>(false);
   final shimmer = ValueNotifier<bool>(
       (Platform.isWindows || Platform.isLinux || Platform.isMacOS));
@@ -283,6 +285,9 @@ class Settings {
       if (data["autoApplyWounds"] != null) {
         autoApplyWounds.value = data["autoApplyWounds"];
       }
+      if (data["standeeChips"] != null) {
+        standeeChips.value = data["standeeChips"];
+      }
       if (data["lastKnownConnection"] != null) {
         lastKnownConnection = data["lastKnownConnection"];
       }
@@ -387,6 +392,7 @@ class Settings {
         '"expireConditions": ${expireConditions.value}, '
         '"perStandeeTurns": ${perStandeeTurns.value}, '
         '"autoApplyWounds": ${autoApplyWounds.value}, '
+        '"standeeChips": ${standeeChips.value}, '
         '"hideLootDeck": ${hideLootDeck.value}, '
         '"style": ${style.value.index}, '
         '"darkMode": ${darkMode.value}, '

@@ -6,7 +6,9 @@ import 'package:frosthaven_assistant/l10n/app_localizations.dart';
 import 'package:frosthaven_assistant/Model/room.dart';
 import 'package:frosthaven_assistant/Resource/commands/add_monster_command.dart';
 import 'package:frosthaven_assistant/Resource/commands/add_standee_command.dart';
+import 'package:frosthaven_assistant/Layout/widgets/standee_nr_button.dart';
 import 'package:frosthaven_assistant/Resource/enums.dart';
+import 'package:frosthaven_assistant/Resource/settings.dart';
 import 'package:frosthaven_assistant/Resource/state/game_state.dart';
 import 'package:frosthaven_assistant/services/service_locator.dart';
 
@@ -79,6 +81,36 @@ void main() {
     testWidgets('renders Close button', (WidgetTester tester) async {
       await pumpMenu(tester);
       expect(find.text('Close'), findsAtLeast(1));
+    });
+
+    group('Swerski number chips', () {
+      testWidgets('are the default look', (WidgetTester tester) async {
+        expect(getIt<Settings>().standeeChips.value, isTrue);
+        await pumpMenu(tester);
+        expect(find.text('1'), findsAtLeast(1));
+        expect(find.byType(StandeeNrButton), findsNothing);
+      });
+
+      testWidgets('show the official plain numbers when turned off',
+          (WidgetTester tester) async {
+        final settings = getIt<Settings>();
+        settings.standeeChips.value = false;
+        addTearDown(() => settings.standeeChips.value = true);
+        await pumpMenu(tester);
+        expect(find.byType(StandeeNrButton), findsAtLeast(1));
+      });
+
+      testWidgets('strike through a standee that is already on the board',
+          (WidgetTester tester) async {
+        AddStandeeCommand(1, null, 'Zealot', MonsterType.normal, false,
+                gameState: getIt<GameState>())
+            .execute();
+        await pumpMenu(tester);
+        final placed = tester.widget<Text>(find.text('1').first);
+        expect(placed.style?.decoration, TextDecoration.lineThrough);
+        final free = tester.widget<Text>(find.text('2').first);
+        expect(free.style?.decoration, isNot(TextDecoration.lineThrough));
+      });
     });
 
     testWidgets('tapping standee button 1 adds a standee to the monster',

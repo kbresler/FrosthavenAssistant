@@ -473,6 +473,12 @@ abstract class AppLocalizations {
   /// **'Apply wound damage at start of turn'**
   String get settingsAutoApplyWounds;
 
+  /// No description provided for @settingsStandeeChips.
+  ///
+  /// In en, this message translates to:
+  /// **'Easy-read numbers when adding standees'**
+  String get settingsStandeeChips;
+
   /// No description provided for @settingsNoStandees.
   ///
   /// In en, this message translates to:
@@ -1282,6 +1288,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Add {count} Normal {name}'**
   String addNormalStandees(int count, String name);
+
+  /// No description provided for @allEliteStandeesPlaced.
+  ///
+  /// In en, this message translates to:
+  /// **'All elites placed'**
+  String get allEliteStandeesPlaced;
+
+  /// No description provided for @allNormalStandeesPlaced.
+  ///
+  /// In en, this message translates to:
+  /// **'All normals placed'**
+  String get allNormalStandeesPlaced;
 
   /// No description provided for @characterLoot.
   ///

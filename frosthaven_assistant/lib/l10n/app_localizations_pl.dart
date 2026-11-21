@@ -206,6 +206,9 @@ class AppLocalizationsPl extends AppLocalizations {
   String get settingsAutoApplyWounds => 'Apply wound damage at start of turn';
 
   @override
+  String get settingsStandeeChips => 'Easy-read numbers when adding standees';
+
+  @override
   String get settingsNoStandees => 'Nie śledź pionków';
 
   @override
@@ -652,6 +655,12 @@ class AppLocalizationsPl extends AppLocalizations {
   String addNormalStandees(int count, String name) {
     return 'Dodaj $count zwykłych $name';
   }
+
+  @override
+  String get allEliteStandeesPlaced => 'All elites placed';
+
+  @override
+  String get allNormalStandeesPlaced => 'All normals placed';
 
   @override
   String get characterLoot => 'Łup postaci';

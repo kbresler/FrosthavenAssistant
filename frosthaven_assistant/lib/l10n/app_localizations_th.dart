@@ -205,6 +205,9 @@ class AppLocalizationsTh extends AppLocalizations {
   String get settingsAutoApplyWounds => 'Apply wound damage at start of turn';
 
   @override
+  String get settingsStandeeChips => 'Easy-read numbers when adding standees';
+
+  @override
   String get settingsNoStandees => 'ไม่ติดตามตัวยืน';
 
   @override
@@ -648,6 +651,12 @@ class AppLocalizationsTh extends AppLocalizations {
   String addNormalStandees(int count, String name) {
     return 'เพิ่ม $name ธรรมดา $count ตัว';
   }
+
+  @override
+  String get allEliteStandeesPlaced => 'All elites placed';
+
+  @override
+  String get allNormalStandeesPlaced => 'All normals placed';
 
   @override
   String get characterLoot => 'การปล้นสะดมของตัวละคร';

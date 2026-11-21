@@ -205,6 +205,9 @@ class AppLocalizationsKo extends AppLocalizations {
   String get settingsAutoApplyWounds => 'Apply wound damage at start of turn';
 
   @override
+  String get settingsStandeeChips => 'Easy-read numbers when adding standees';
+
+  @override
   String get settingsNoStandees => '스탠디 추적 안 함';
 
   @override
@@ -644,6 +647,12 @@ class AppLocalizationsKo extends AppLocalizations {
   String addNormalStandees(int count, String name) {
     return '일반 $name $count개 추가';
   }
+
+  @override
+  String get allEliteStandeesPlaced => 'All elites placed';
+
+  @override
+  String get allNormalStandeesPlaced => 'All normals placed';
 
   @override
   String get characterLoot => '캐릭터 전리품';

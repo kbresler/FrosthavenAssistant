@@ -35,8 +35,10 @@ class AutoAddStandeeMenu extends StatefulWidget {
 
 class AddStandeeMenuState extends State<AutoAddStandeeMenu> {
   static const double _kMenuWidth = 250.0;
-  static const double _kImageAreaWidth = 110.0;
-  static const double _kImageSize = 90.0;
+  // Swerski: big enough to match the picture to the physical standee.
+  static const double _kImageAreaWidth = 160.0;
+  static const double _kImageSize = 140.0;
+  static const double _kImageVerticalMargin = 16.0;
   static const double _kImageTopPadding = 2.0;
   static const double _kImageElevation = 8.0;
   static const double _kHeightBase = 140.0;
@@ -293,7 +295,9 @@ class AddStandeeMenuState extends State<AutoAddStandeeMenu> {
                 // Swerski: show which monster these standees are for.
                 SizedBox(
                     width: _kImageAreaWidth * scale,
-                    child: Center(child: _buildMonsterImage(monster, scale))),
+                    child: Center(
+                        child: _buildMonsterImage(monster, scale,
+                            maxSize: (height - _kImageVerticalMargin) * scale))),
                 Expanded(
                     child: ValueListenableBuilder<int>(
                   valueListenable: _gameState.commandIndex,
@@ -306,6 +310,8 @@ class AddStandeeMenuState extends State<AutoAddStandeeMenu> {
                                 scale: scale,
                                 monster: monster,
                                 elite: true,
+                                darkMode: _settings.darkMode.value,
+                                useChips: _settings.standeeChips.value,
                                 nrOfStandees: nrOfStandees,
                                 nrLeft: nrOfElite - currentEliteAdded,
                                 nrOfElite: nrOfElite,
@@ -317,6 +323,8 @@ class AddStandeeMenuState extends State<AutoAddStandeeMenu> {
                                 scale: scale,
                                 monster: monster,
                                 elite: false,
+                                darkMode: _settings.darkMode.value,
+                                useChips: _settings.standeeChips.value,
                                 nrOfStandees: nrOfStandees,
                                 nrLeft: nrOfNormal - currentNormalAdded,
                                 nrOfElite: nrOfElite,
@@ -364,8 +372,9 @@ class AddStandeeMenuState extends State<AutoAddStandeeMenu> {
         });
   }
 
-  Widget _buildMonsterImage(Monster monster, double scale) {
-    final size = _kImageSize * scale;
+  Widget _buildMonsterImage(Monster monster, double scale,
+      {required double maxSize}) {
+    final size = (_kImageSize * scale).clamp(0.0, maxSize);
     return PhysicalShape(
       color: Colors.redAccent,
       shadowColor: Colors.black,
