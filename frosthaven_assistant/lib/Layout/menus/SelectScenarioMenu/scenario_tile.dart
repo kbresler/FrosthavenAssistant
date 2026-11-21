@@ -6,6 +6,7 @@ import 'package:frosthaven_assistant/services/service_locator.dart';
 import 'package:frosthaven_assistant/services/translation_service.dart';
 
 import '../../../Resource/app_constants.dart';
+import '../../../l10n/app_localizations.dart';
 
 class ScenarioTile extends StatelessWidget {
   const ScenarioTile({
@@ -22,8 +23,12 @@ class ScenarioTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final translatedName = getIt<TranslationService>().t(name);
-    String title =
-        settings.showScenarioNames.value ? translatedName : name.split(' ').first;
+    // Swerski: "custom" reads as a proper entry, not a lower-case key.
+    String title = name == "custom"
+        ? AppLocalizations.of(context)!.customScenario
+        : settings.showScenarioNames.value
+            ? translatedName
+            : name.split(' ').first;
     return ListTile(
       title: Text(title, style: kTitleStyle),
       onTap: () {

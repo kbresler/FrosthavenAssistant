@@ -15,6 +15,13 @@ class AppLocalizationsKo extends AppLocalizations {
   String get menuAddCharacter => '캐릭터 추가';
 
   @override
+  String get customScenario => 'Custom scenario';
+
+  @override
+  String get emptyBoardHint =>
+      'Start by choosing a scenario and adding your characters';
+
+  @override
   String get menuRemoveCharacters => '캐릭터 제거';
 
   @override

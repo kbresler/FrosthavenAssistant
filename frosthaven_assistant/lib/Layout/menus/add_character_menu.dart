@@ -202,13 +202,16 @@ class AddCharacterMenuState extends State<AddCharacterMenu> {
       child: Column(
         children: [
           const SizedBox(height: 10),
+          // Swerski: the popup is titled after what it does; loading and
+          // saving characters is a smaller link underneath.
+          Text(AppLocalizations.of(context)!.menuAddCharacter,
+              style: kTitleStyle),
           TextButton(
             onPressed: () {
               //open remove card menu
               openDialog(context, SaveCharacterMenu());
             },
-            child: Text(AppLocalizations.of(context)!.loadOrSaveCharacters,
-                style: kTitleStyle),
+            child: Text(AppLocalizations.of(context)!.loadOrSaveCharacters),
           ),
           Container(
             margin: const EdgeInsets.symmetric(horizontal: 10),
@@ -229,7 +232,9 @@ class AddCharacterMenuState extends State<AddCharacterMenu> {
               disabled: _characterAlreadyAdded(_foundCharacters[index]),
             ),
           ),
-          const SizedBox(height: kMenuCloseButtonSpacing),
+          // Swerski: a full button's height so Close no longer covers the
+          // last character in the list.
+          const SizedBox(height: kButtonSize),
         ],
       ),
     );

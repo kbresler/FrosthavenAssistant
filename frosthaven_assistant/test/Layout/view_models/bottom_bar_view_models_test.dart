@@ -123,6 +123,16 @@ void main() {
       expect(vm.formattedScenarioName, 'NoColonScenario');
     });
 
+    test('custom scenario reads as "Custom scenario" (Swerski)', () {
+      (gameState.currentCampaign as ValueNotifier<String>).value = 'Frosthaven';
+      (gameState.scenario as ValueNotifier<String>).value = 'custom';
+      final vm = BottomBarLevelWidgetViewModel(
+        gameState: gameState,
+        settings: settings,
+      );
+      expect(vm.formattedScenarioName, 'Custom scenario');
+    });
+
     test('empty scenario name returns empty string', () {
       (gameState.scenario as ValueNotifier<String>).value = '';
       final vm = BottomBarLevelWidgetViewModel(

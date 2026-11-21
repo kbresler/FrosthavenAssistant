@@ -145,15 +145,15 @@ void main() {
       await tester.tap(find.text('Frosthaven'));
       await tester.pumpAndSettle();
 
-      // "custom" should be in the list - tap it
-      final customFinder = find.text('custom');
-      if (customFinder.evaluate().isNotEmpty) {
-        await tester.tap(customFinder.first);
-        await tester.pumpAndSettle();
-        // Menu should close and scenario should be set to custom
-        expect(find.byType(SelectScenarioMenu), findsNothing);
-        expect(getIt<GameState>().scenario.value, 'custom');
-      }
+      // Swerski: the "custom" entry is shown as "Custom scenario".
+      expect(find.text('custom'), findsNothing);
+      final customFinder = find.text('Custom scenario');
+      expect(customFinder, findsOneWidget);
+      await tester.tap(customFinder.first);
+      await tester.pumpAndSettle();
+      // Menu should close and scenario should be set to custom
+      expect(find.byType(SelectScenarioMenu), findsNothing);
+      expect(getIt<GameState>().scenario.value, 'custom');
     });
 
     testWidgets('switching to Jaws of the Lion shows JotL scenarios',

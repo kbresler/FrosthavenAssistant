@@ -3,6 +3,8 @@
 
   "menuSetScenario": "Set Scenario",
   "menuAddCharacter": "Add Character",
+  "customScenario": "Custom scenario",
+  "emptyBoardHint": "Start by choosing a scenario and adding your characters",
   "menuRemoveCharacters": "Remove Characters",
   "menuSetLevel": "Set Level",
   "menuLootDeck": "Loot Deck Menu",

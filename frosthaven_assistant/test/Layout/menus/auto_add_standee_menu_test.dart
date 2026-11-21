@@ -25,7 +25,7 @@ void main() {
         .execute();
   });
 
-  Future<void> pumpMenu(WidgetTester tester) async {
+  Future<void> pumpMenu(WidgetTester tester, {ThemeData? theme}) async {
     final originalOnError = FlutterError.onError;
     addTearDown(() => FlutterError.onError = originalOnError);
     FlutterError.onError = ignoreOverflowErrors;
@@ -35,6 +35,7 @@ void main() {
     ];
     await tester.pumpWidget(
       MaterialApp(
+        theme: theme,
         localizationsDelegates: const [
           AppLocalizations.delegate,
           GlobalMaterialLocalizations.delegate,
@@ -84,6 +85,17 @@ void main() {
     });
 
     group('Swerski number chips', () {
+      testWidgets('use the game font, like the headings',
+          (WidgetTester tester) async {
+        await pumpMenu(tester, theme: ThemeData(fontFamily: 'Pirata'));
+        final chipText = find.descendant(
+            of: find.byType(InkWell), matching: find.text('1'));
+        final resolved = DefaultTextStyle.of(tester.element(chipText.first))
+            .style
+            .merge(tester.widget<Text>(chipText.first).style);
+        expect(resolved.fontFamily, 'Pirata');
+      });
+
       testWidgets('are the default look', (WidgetTester tester) async {
         expect(getIt<Settings>().standeeChips.value, isTrue);
         await pumpMenu(tester);

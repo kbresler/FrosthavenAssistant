@@ -15,6 +15,13 @@ class AppLocalizationsZh extends AppLocalizations {
   String get menuAddCharacter => '添加角色';
 
   @override
+  String get customScenario => 'Custom scenario';
+
+  @override
+  String get emptyBoardHint =>
+      'Start by choosing a scenario and adding your characters';
+
+  @override
   String get menuRemoveCharacters => '移除角色';
 
   @override

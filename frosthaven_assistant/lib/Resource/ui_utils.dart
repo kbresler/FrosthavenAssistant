@@ -261,7 +261,7 @@ bool hasGHVersion(String name) {
 }
 
 const TextStyle toastTextStyle =
-    TextStyle(fontFamily: "markazi", fontSize: kFontSizeToast);
+    TextStyle(fontFamily: "Markazi", fontSize: kFontSizeToast);
 GestureDetector createToastContent(BuildContext context, String text) { // ignore: avoid-returning-widgets, top-level utility function for toast content
   return GestureDetector(
     onTap: () {
@@ -336,7 +336,7 @@ SnackBar _toastSnackBar(BuildContext context, String text,
       child: Text(text,
           textAlign: TextAlign.center,
           style: const TextStyle(
-              fontFamily: "markazi",
+              fontFamily: "Markazi",
               fontSize: _kBannerFontSize,
               height: 1.1,
               color: _kBannerText)),
@@ -381,7 +381,7 @@ Future<void> showErrorToastStickyWithRetry(
                 },
                 child: Text(AppLocalizations.of(context)!.retry,
                     style: const TextStyle(
-                        fontFamily: "markazi",
+                        fontFamily: "Markazi",
                         fontSize: kFontSizeToast,
                         color: Colors.white,
                         fontWeight: FontWeight.bold))),

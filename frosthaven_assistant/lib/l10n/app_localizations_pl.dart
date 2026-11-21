@@ -15,6 +15,13 @@ class AppLocalizationsPl extends AppLocalizations {
   String get menuAddCharacter => 'Dodaj postać';
 
   @override
+  String get customScenario => 'Custom scenario';
+
+  @override
+  String get emptyBoardHint =>
+      'Start by choosing a scenario and adding your characters';
+
+  @override
   String get menuRemoveCharacters => 'Usuń postacie';
 
   @override

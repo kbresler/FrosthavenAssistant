@@ -53,6 +53,15 @@ void main() {
       expect(find.text('Load or Save Characters'), findsOneWidget);
     });
 
+    testWidgets('is titled Add Character, above the load/save link (Swerski)',
+        (WidgetTester tester) async {
+      await pumpMenu(tester);
+      final title = find.text('Add Character');
+      expect(title, findsOneWidget);
+      expect(tester.getTopLeft(title).dy,
+          lessThan(tester.getTopLeft(find.text('Load or Save Characters')).dy));
+    });
+
     testWidgets('renders search field', (WidgetTester tester) async {
       await pumpMenu(tester);
       expect(find.byType(TextField), findsOneWidget);

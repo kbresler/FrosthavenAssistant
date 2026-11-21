@@ -236,11 +236,14 @@ class MainMenu extends StatelessWidget {
                     valueListenable: vm.wifiIPv6,
                     builder: (context, value, child) {
                       final l10n = AppLocalizations.of(context)!;
-                      final ip = "(${vm.wifiIPv6.value})";
+                      // Swerski: no empty "()" when there is no address.
+                      final address = vm.wifiIPv6.value;
+                      final ip = address.isEmpty ? "" : "($address)";
                       return CheckboxListTile(
-                        title: Text(vm.isServer
-                            ? l10n.stopServerWithIp(ip)
-                            : l10n.startHostServerWithIp(ip)),
+                        title: Text((vm.isServer
+                                ? l10n.stopServerWithIp(ip)
+                                : l10n.startHostServerWithIp(ip))
+                            .trim()),
                         value: vm.isServer,
                         onChanged: (bool? value) {
                           vm.toggleServer();

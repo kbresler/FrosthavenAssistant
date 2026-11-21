@@ -125,6 +125,18 @@ abstract class AppLocalizations {
   /// **'Add Character'**
   String get menuAddCharacter;
 
+  /// No description provided for @customScenario.
+  ///
+  /// In en, this message translates to:
+  /// **'Custom scenario'**
+  String get customScenario;
+
+  /// No description provided for @emptyBoardHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Start by choosing a scenario and adding your characters'**
+  String get emptyBoardHint;
+
   /// No description provided for @menuRemoveCharacters.
   ///
   /// In en, this message translates to:

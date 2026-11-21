@@ -18,6 +18,7 @@ import 'LootDeckWidget/loot_deck_widget.dart';
 import 'MainList/main_list.dart';
 import 'bottom_bar.dart';
 import 'character_amds_widget.dart';
+import 'empty_board_prompt.dart';
 import 'menus/AutoAddStandeeMenu/auto_add_standee_menu.dart';
 import 'menus/main_menu.dart';
 import 'view_models/main_scaffold_view_model.dart';
@@ -150,6 +151,7 @@ class MainScaffoldBody extends StatelessWidget {
           return Stack(
             children: [
               if (!isLoading) const MainList(),
+              if (!isLoading) const EmptyBoardPrompt(),
               if (isLoading)
                 BackGround(
                     child: const Center(

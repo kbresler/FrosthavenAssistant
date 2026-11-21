@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:frosthaven_assistant/Resource/app_constants.dart';
+import 'package:frosthaven_assistant/Resource/commands/command_l10n.dart';
 import 'package:frosthaven_assistant/Resource/game_methods.dart';
 import 'package:frosthaven_assistant/Resource/ui_utils.dart';
 import 'package:frosthaven_assistant/Resource/settings.dart';
@@ -27,6 +28,7 @@ class BottomBarLevelWidgetViewModel {
 
   String get formattedScenarioName {
     final s = _gameState.scenario.value;
+    if (s == "custom") return commandL10n.customScenario;
     final key = (_gameState.currentCampaign.value == "Solo" && s.contains(':'))
         ? s.split(':')[1]
         : s;
