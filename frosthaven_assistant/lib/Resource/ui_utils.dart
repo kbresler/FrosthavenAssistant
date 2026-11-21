@@ -271,6 +271,24 @@ GestureDetector createToastContent(BuildContext context, String text) { // ignor
   );
 }
 
+// Swerski: one "your turn" look for characters, monsters and standees
+// (Settings.turnGlow).
+const Color kTurnColor = Colors.lightGreenAccent;
+const double kTurnOutlineWidth = 2.5;
+const double _kTurnGlowBlur = 10.0;
+const double _kTurnGlowSpread = 1.5;
+const double _kTurnGlowOpacity = 0.75;
+
+bool useTurnGlow() =>
+    getIt.isRegistered<Settings>() && getIt<Settings>().turnGlow.value;
+
+/// Soft green glow around whatever has the turn, readable across the table.
+BoxShadow turnGlowShadow(double scale) => BoxShadow(
+      color: kTurnColor.withValues(alpha: _kTurnGlowOpacity),
+      blurRadius: _kTurnGlowBlur * scale,
+      spreadRadius: _kTurnGlowSpread * scale,
+    );
+
 // Swerski: game-style message banner (Settings.gameStyleMessages).
 const Color _kBannerParchment = Color(0xFFF2E6C9);
 const Color _kBannerBorder = Color(0xFF7A5A2E);

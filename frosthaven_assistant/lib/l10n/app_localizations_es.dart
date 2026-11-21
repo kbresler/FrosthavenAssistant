@@ -211,6 +211,9 @@ class AppLocalizationsEs extends AppLocalizations {
   String get settingsGameStyleMessages => 'Parchment message banner';
 
   @override
+  String get settingsTurnGlow => 'Green glow on whose turn it is';
+
+  @override
   String get settingsNoStandees => 'No rastrear figurines';
 
   @override

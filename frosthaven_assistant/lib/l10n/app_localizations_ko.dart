@@ -211,6 +211,9 @@ class AppLocalizationsKo extends AppLocalizations {
   String get settingsGameStyleMessages => 'Parchment message banner';
 
   @override
+  String get settingsTurnGlow => 'Green glow on whose turn it is';
+
+  @override
   String get settingsNoStandees => '스탠디 추적 안 함';
 
   @override

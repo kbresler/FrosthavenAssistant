@@ -36,7 +36,6 @@ const double _kProgressBarSize = 4.0;
 const double _kProgressBarBorderWidth = 0.5;
 const int _kHealthLargeThreshold = 99;
 const int _kHexRadix = 16;
-const double _kCurrentBorderWidth = 2.5;
 
 class MonsterBoxBody extends StatelessWidget {
   const MonsterBoxBody({
@@ -110,12 +109,16 @@ class MonsterBoxBody extends StatelessWidget {
                 width: width,
                 decoration: BoxDecoration(
                   color: Color(int.parse("7A000000", radix: _kHexRadix)),
-                  boxShadow: [cardBoxShadow(scale)],
+                  boxShadow: [
+                    cardBoxShadow(scale),
+                    if (vm.isCurrentStandee && useTurnGlow())
+                      turnGlowShadow(scale),
+                  ],
                   // Swerski: outline the standee whose turn it is.
                   border: vm.isCurrentStandee
                       ? Border.all(
-                          color: Colors.lightGreenAccent,
-                          width: _kCurrentBorderWidth * scale,
+                          color: kTurnColor,
+                          width: kTurnOutlineWidth * scale,
                           strokeAlign: BorderSide.strokeAlignOutside)
                       : null,
                 ),

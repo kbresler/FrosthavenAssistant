@@ -38,6 +38,8 @@ class Settings {
   final standeeChips = ValueNotifier<bool>(true);
   // Swerski: slim parchment message banner instead of the teal bar.
   final gameStyleMessages = ValueNotifier<bool>(true);
+  // Swerski: one green outline with a soft glow for whoever has the turn.
+  final turnGlow = ValueNotifier<bool>(true);
   final hideLootDeck = ValueNotifier<bool>(false);
   final shimmer = ValueNotifier<bool>(
       (Platform.isWindows || Platform.isLinux || Platform.isMacOS));
@@ -293,6 +295,9 @@ class Settings {
       if (data["gameStyleMessages"] != null) {
         gameStyleMessages.value = data["gameStyleMessages"];
       }
+      if (data["turnGlow"] != null) {
+        turnGlow.value = data["turnGlow"];
+      }
       if (data["lastKnownConnection"] != null) {
         lastKnownConnection = data["lastKnownConnection"];
       }
@@ -399,6 +404,7 @@ class Settings {
         '"autoApplyWounds": ${autoApplyWounds.value}, '
         '"standeeChips": ${standeeChips.value}, '
         '"gameStyleMessages": ${gameStyleMessages.value}, '
+        '"turnGlow": ${turnGlow.value}, '
         '"hideLootDeck": ${hideLootDeck.value}, '
         '"style": ${style.value.index}, '
         '"darkMode": ${darkMode.value}, '

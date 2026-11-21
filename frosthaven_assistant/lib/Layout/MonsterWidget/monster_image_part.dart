@@ -31,14 +31,21 @@ class MonsterImagePart extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final shadow = textShadow(scale);
+    final isCurrent = vm.turnState == TurnsState.current;
+    // Swerski: same green and glow as characters and standees.
+    final glow = isCurrent && useTurnGlow();
     return RepaintBoundary(
         child: Stack(alignment: Alignment.bottomCenter, children: [
       Container(
           margin: EdgeInsets.only(
               bottom: _kImageMarginV * scale, top: _kImageMarginV * scale),
+          decoration: glow
+              ? BoxDecoration(
+                  shape: BoxShape.circle, boxShadow: [turnGlowShadow(scale)])
+              : null,
           child: PhysicalShape(
-            color: vm.turnState == TurnsState.current
-                ? Colors.greenAccent
+            color: isCurrent
+                ? (glow ? kTurnColor : Colors.greenAccent)
                 : Colors.transparent,
             shadowColor: Colors.black,
             elevation: _kElevation,

@@ -163,6 +163,13 @@ class SettingsMenuState extends State<SettingsMenu> {
                   settings.saveToDisk();
                 }),
             SettingsCheckbox(
+                title: l10n.settingsTurnGlow,
+                notifier: settings.turnGlow,
+                onChanged: (v) {
+                  settings.turnGlow.value = v;
+                  settings.saveToDisk();
+                }),
+            SettingsCheckbox(
                 title: l10n.settingsNoStandees,
                 notifier: settings.noStandees,
                 onChanged: (v) {

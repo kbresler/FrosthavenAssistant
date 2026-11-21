@@ -485,6 +485,12 @@ abstract class AppLocalizations {
   /// **'Parchment message banner'**
   String get settingsGameStyleMessages;
 
+  /// No description provided for @settingsTurnGlow.
+  ///
+  /// In en, this message translates to:
+  /// **'Green glow on whose turn it is'**
+  String get settingsTurnGlow;
+
   /// No description provided for @settingsNoStandees.
   ///
   /// In en, this message translates to:

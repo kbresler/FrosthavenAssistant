@@ -7,6 +7,7 @@ import '../../Resource/color_matrices.dart';
 import '../../Resource/game_methods.dart';
 import '../../Resource/settings.dart';
 import '../../Resource/state/game_state.dart';
+import '../../Resource/ui_utils.dart';
 import '../MonsterBox/monster_box.dart';
 import '../health_wheel_controller.dart';
 import '../view_models/character_view_model.dart';
@@ -119,17 +120,27 @@ class CharacterWidgetState extends State<CharacterWidget> {
               // DecoratedBox instead of PhysicalShape: avoids creating a
               // PhysicalModelLayer (compositing save layer), which causes
               // TextStyle.shadows to paint at wrong coords on iOS/Impeller.
+              const dropShadow = BoxShadow(
+                color: Colors.black38,
+                blurRadius: CharacterWidget._kElevation,
+                offset: Offset(0, CharacterWidget._kElevation / 4),
+              );
+              // Swerski: same green outline and glow as monsters and
+              // standees when it's this character's turn.
+              final glow = vm.isCurrentTurn && useTurnGlow();
               Widget inner = DecoratedBox(
                   decoration: BoxDecoration(
                     color: vm.isCurrentTurn
-                        ? Colors.tealAccent
+                        ? (glow ? kTurnColor : Colors.tealAccent)
                         : Colors.transparent,
-                    boxShadow: const [
-                      BoxShadow(
-                        color: Colors.black38,
-                        blurRadius: CharacterWidget._kElevation,
-                        offset: Offset(0, CharacterWidget._kElevation / 4),
-                      )
+                    border: glow
+                        ? Border.all(
+                            color: kTurnColor,
+                            width: kTurnOutlineWidth * scale,
+                            strokeAlign: BorderSide.strokeAlignOutside)
+                        : null,
+                    boxShadow: [
+                      if (glow) turnGlowShadow(scale) else dropShadow,
                     ],
                   ),
                   child: CharacterWidgetInternal(
