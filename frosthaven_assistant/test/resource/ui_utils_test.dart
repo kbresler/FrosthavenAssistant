@@ -4,7 +4,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:frosthaven_assistant/l10n/app_localizations.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:frosthaven_assistant/Resource/settings.dart';
 import 'package:frosthaven_assistant/Resource/ui_utils.dart';
+import 'package:frosthaven_assistant/services/service_locator.dart';
 
 import '../command/test_helpers.dart';
 
@@ -171,6 +173,42 @@ void main() {
         },
       )));
       expect(feedback, isNotNull);
+    });
+
+    testWidgets('message banner is parchment by default (Swerski)',
+        (tester) async {
+      expect(getIt<Settings>().gameStyleMessages.value, isTrue);
+      await tester.pumpWidget(_l10nApp(Scaffold(
+        body: Builder(
+          builder: (context) => TextButton(
+            onPressed: () => showToast(context, 'banner'),
+            child: const Text('tap'),
+          ),
+        ),
+      )));
+      await tester.tap(find.text('tap'));
+      await tester.pump();
+      final bar = tester.widget<SnackBar>(find.byType(SnackBar));
+      expect(bar.behavior, SnackBarBehavior.floating);
+      expect(bar.backgroundColor, isNot(Colors.teal));
+    });
+
+    testWidgets('message banner is the official teal bar when turned off',
+        (tester) async {
+      getIt<Settings>().gameStyleMessages.value = false;
+      addTearDown(() => getIt<Settings>().gameStyleMessages.value = true);
+      await tester.pumpWidget(_l10nApp(Scaffold(
+        body: Builder(
+          builder: (context) => TextButton(
+            onPressed: () => showToast(context, 'banner'),
+            child: const Text('tap'),
+          ),
+        ),
+      )));
+      await tester.tap(find.text('tap'));
+      await tester.pump();
+      final bar = tester.widget<SnackBar>(find.byType(SnackBar));
+      expect(bar.backgroundColor, Colors.teal);
     });
 
     testWidgets('showToastSticky does not throw when context is mounted',

@@ -43,4 +43,28 @@ void main() {
       expect(DrawCommand(gameState: getIt<GameState>()).describe(), 'Draw');
     });
   });
+
+  group('Swerski Battle Goals reminder', () {
+    tearDown(() => GameUtilMethods.setToastMessage(''));
+
+    test('Draw clears a message that is only the reminder', () {
+      GameUtilMethods.setToastMessage(kBattleGoalReminder);
+      DrawCommand(gameState: getIt<GameState>()).execute();
+      expect(getIt<GameState>().toastMessage.value, '');
+    });
+
+    test('Draw keeps the scenario notes after the reminder', () {
+      GameUtilMethods.setToastMessage(
+          '$kBattleGoalReminder\n\nDoors are locked until round 3.');
+      DrawCommand(gameState: getIt<GameState>()).execute();
+      expect(getIt<GameState>().toastMessage.value,
+          'Doors are locked until round 3.');
+    });
+
+    test('Draw leaves other messages alone', () {
+      GameUtilMethods.setToastMessage('Spawn a Hound at A.');
+      DrawCommand(gameState: getIt<GameState>()).execute();
+      expect(getIt<GameState>().toastMessage.value, 'Spawn a Hound at A.');
+    });
+  });
 }

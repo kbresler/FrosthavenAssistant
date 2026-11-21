@@ -36,6 +36,8 @@ class Settings {
   final autoApplyWounds = ValueNotifier<bool>(true);
   // Swerski: solid number chips in the add standee popup.
   final standeeChips = ValueNotifier<bool>(true);
+  // Swerski: slim parchment message banner instead of the teal bar.
+  final gameStyleMessages = ValueNotifier<bool>(true);
   final hideLootDeck = ValueNotifier<bool>(false);
   final shimmer = ValueNotifier<bool>(
       (Platform.isWindows || Platform.isLinux || Platform.isMacOS));
@@ -288,6 +290,9 @@ class Settings {
       if (data["standeeChips"] != null) {
         standeeChips.value = data["standeeChips"];
       }
+      if (data["gameStyleMessages"] != null) {
+        gameStyleMessages.value = data["gameStyleMessages"];
+      }
       if (data["lastKnownConnection"] != null) {
         lastKnownConnection = data["lastKnownConnection"];
       }
@@ -393,6 +398,7 @@ class Settings {
         '"perStandeeTurns": ${perStandeeTurns.value}, '
         '"autoApplyWounds": ${autoApplyWounds.value}, '
         '"standeeChips": ${standeeChips.value}, '
+        '"gameStyleMessages": ${gameStyleMessages.value}, '
         '"hideLootDeck": ${hideLootDeck.value}, '
         '"style": ${style.value.index}, '
         '"darkMode": ${darkMode.value}, '

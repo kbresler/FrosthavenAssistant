@@ -271,12 +271,64 @@ GestureDetector createToastContent(BuildContext context, String text) { // ignor
   );
 }
 
-void showToast(BuildContext context, String text) {
-  if (context.mounted) {
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+// Swerski: game-style message banner (Settings.gameStyleMessages).
+const Color _kBannerParchment = Color(0xFFF2E6C9);
+const Color _kBannerBorder = Color(0xFF7A5A2E);
+const Color _kBannerText = Color(0xFF3B2A14);
+const double _kBannerMaxWidth = 640.0;
+const double _kBannerRadius = 8.0;
+const double _kBannerBorderWidth = 2.0;
+const double _kBannerFontSize = 22.0;
+const EdgeInsets _kBannerPadding =
+    EdgeInsets.symmetric(horizontal: 16, vertical: 6);
+
+bool _useGameStyleMessages() =>
+    getIt.isRegistered<Settings>() &&
+    getIt<Settings>().gameStyleMessages.value;
+
+SnackBar _toastSnackBar(BuildContext context, String text,
+    {Duration duration = const Duration(milliseconds: 4000)}) {
+  if (!_useGameStyleMessages()) {
+    return SnackBar(
+      duration: duration,
       backgroundColor: Colors.teal,
       content: createToastContent(context, text),
-    ));
+    );
+  }
+  final screenWidth = MediaQuery.of(context).size.width;
+  final sideMargin = screenWidth > _kBannerMaxWidth
+      ? (screenWidth - _kBannerMaxWidth) / 2
+      : 8.0;
+  return SnackBar(
+    duration: duration,
+    behavior: SnackBarBehavior.floating,
+    margin: EdgeInsets.only(left: sideMargin, right: sideMargin, bottom: 8),
+    padding: _kBannerPadding,
+    elevation: 4,
+    backgroundColor: _kBannerParchment,
+    shape: RoundedRectangleBorder(
+      borderRadius: BorderRadius.circular(_kBannerRadius),
+      side: const BorderSide(
+          color: _kBannerBorder, width: _kBannerBorderWidth),
+    ),
+    content: GestureDetector(
+      onTap: () {
+        ScaffoldMessenger.of(context).hideCurrentSnackBar();
+      },
+      child: Text(text,
+          textAlign: TextAlign.center,
+          style: const TextStyle(
+              fontFamily: "markazi",
+              fontSize: _kBannerFontSize,
+              height: 1.1,
+              color: _kBannerText)),
+    ),
+  );
+}
+
+void showToast(BuildContext context, String text) {
+  if (context.mounted) {
+    ScaffoldMessenger.of(context).showSnackBar(_toastSnackBar(context, text));
   }
 }
 
@@ -284,11 +336,8 @@ Future<void> showToastSticky(BuildContext context, String text,
     {GameState? gameState}) async {
   if (context.mounted) {
     await ScaffoldMessenger.of(context)
-        .showSnackBar(SnackBar(
-          duration: const Duration(days: 1),
-          backgroundColor: Colors.teal,
-          content: createToastContent(context, text),
-        ))
+        .showSnackBar(_toastSnackBar(context, text,
+            duration: const Duration(days: 1)))
         .closed;
     if ((gameState ?? getIt<GameState>()).toastMessage.value == text) {
       GameUtilMethods.setToastMessage("");

@@ -208,6 +208,9 @@ class AppLocalizationsEs extends AppLocalizations {
   String get settingsStandeeChips => 'Easy-read numbers when adding standees';
 
   @override
+  String get settingsGameStyleMessages => 'Parchment message banner';
+
+  @override
   String get settingsNoStandees => 'No rastrear figurines';
 
   @override

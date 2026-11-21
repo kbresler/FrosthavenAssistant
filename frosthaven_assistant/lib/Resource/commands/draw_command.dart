@@ -17,6 +17,7 @@ class DrawCommand extends Command with TurnStartWounds {
     DeckMethods.drawAbilityCards(stateAccess);
     RoundMethods.sortByInitiative(stateAccess);
     RoundMethods.setRoundState(stateAccess, RoundState.playTurns);
+    GameUtilMethods.clearBattleGoalReminder(gameState: _gameState);
     if (_gameState.currentList.isNotEmpty) {
       final before = snapshotTurns();
       RoundMethods.startTurn(stateAccess, _gameState.currentList.first);

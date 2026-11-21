@@ -156,6 +156,13 @@ class SettingsMenuState extends State<SettingsMenu> {
                   settings.saveToDisk();
                 }),
             SettingsCheckbox(
+                title: l10n.settingsGameStyleMessages,
+                notifier: settings.gameStyleMessages,
+                onChanged: (v) {
+                  settings.gameStyleMessages.value = v;
+                  settings.saveToDisk();
+                }),
+            SettingsCheckbox(
                 title: l10n.settingsNoStandees,
                 notifier: settings.noStandees,
                 onChanged: (v) {

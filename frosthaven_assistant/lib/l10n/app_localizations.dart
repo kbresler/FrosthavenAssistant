@@ -479,6 +479,12 @@ abstract class AppLocalizations {
   /// **'Easy-read numbers when adding standees'**
   String get settingsStandeeChips;
 
+  /// No description provided for @settingsGameStyleMessages.
+  ///
+  /// In en, this message translates to:
+  /// **'Parchment message banner'**
+  String get settingsGameStyleMessages;
+
   /// No description provided for @settingsNoStandees.
   ///
   /// In en, this message translates to:

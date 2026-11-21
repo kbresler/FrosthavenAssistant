@@ -208,6 +208,9 @@ class AppLocalizationsKo extends AppLocalizations {
   String get settingsStandeeChips => 'Easy-read numbers when adding standees';
 
   @override
+  String get settingsGameStyleMessages => 'Parchment message banner';
+
+  @override
   String get settingsNoStandees => '스탠디 추적 안 함';
 
   @override

@@ -209,6 +209,9 @@ class AppLocalizationsPl extends AppLocalizations {
   String get settingsStandeeChips => 'Easy-read numbers when adding standees';
 
   @override
+  String get settingsGameStyleMessages => 'Parchment message banner';
+
+  @override
   String get settingsNoStandees => 'Nie śledź pionków';
 
   @override

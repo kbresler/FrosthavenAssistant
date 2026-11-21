@@ -99,6 +99,7 @@
   "settingsPerStandeeTurns": "Monster turns one standee at a time",
   "settingsAutoApplyWounds": "Apply wound damage at start of turn",
   "settingsStandeeChips": "Easy-read numbers when adding standees",
+  "settingsGameStyleMessages": "Parchment message banner",
   "settingsNoStandees": "Don't track Standees",
   "settingsAutoAddStandees": "Auto Add Standees",
   "settingsAutoAddSpawns": "Auto Add Timed Spawns",

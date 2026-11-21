@@ -154,7 +154,7 @@ class ScenarioMethods {
     } else {
       if ((settings ?? getIt<Settings>()).showBattleGoalReminder.value &&
           gs.currentCampaign.value != "Buttons and Bugs") {
-        initMessage += "Remember to choose your Battle Goals.";
+        initMessage += kBattleGoalReminder;
       }
       if (scenario != "custom") {
         final scenarioData =
