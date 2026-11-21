@@ -587,6 +587,24 @@ abstract class AppLocalizations {
   /// **'Select none'**
   String get attackSelectNone;
 
+  /// No description provided for @attackHarmful.
+  ///
+  /// In en, this message translates to:
+  /// **'Harmful'**
+  String get attackHarmful;
+
+  /// No description provided for @attackHelpful.
+  ///
+  /// In en, this message translates to:
+  /// **'Helpful'**
+  String get attackHelpful;
+
+  /// No description provided for @attackMarks.
+  ///
+  /// In en, this message translates to:
+  /// **'Character marks'**
+  String get attackMarks;
+
   /// No description provided for @attackHoldHint.
   ///
   /// In en, this message translates to:
@@ -617,35 +635,11 @@ abstract class AppLocalizations {
   /// **'Chill'**
   String get attackChill;
 
-  /// No description provided for @attackHarmful.
-  ///
-  /// In en, this message translates to:
-  /// **'Harmful'**
-  String get attackHarmful;
-
-  /// No description provided for @attackHelpful.
-  ///
-  /// In en, this message translates to:
-  /// **'Helpful'**
-  String get attackHelpful;
-
-  /// No description provided for @attackMarks.
-  ///
-  /// In en, this message translates to:
-  /// **'Character marks'**
-  String get attackMarks;
-
   /// No description provided for @attackKilled.
   ///
   /// In en, this message translates to:
   /// **'{count} killed'**
   String attackKilled(int count);
-
-  /// No description provided for @attackNone.
-  ///
-  /// In en, this message translates to:
-  /// **'none'**
-  String get attackNone;
 
   /// No description provided for @attackAll.
   ///
@@ -653,23 +647,11 @@ abstract class AppLocalizations {
   /// **'all'**
   String get attackAll;
 
-  /// No description provided for @attackInTotal.
-  ///
-  /// In en, this message translates to:
-  /// **'{count} in total'**
-  String attackInTotal(int count);
-
   /// No description provided for @attackDeckAndLeft.
   ///
   /// In en, this message translates to:
   /// **'{deck} · {left} left'**
   String attackDeckAndLeft(String deck, int left);
-
-  /// No description provided for @attackInDeck.
-  ///
-  /// In en, this message translates to:
-  /// **'{count} in the deck'**
-  String attackInDeck(int count);
 
   /// No description provided for @settingsGameStyleMessages.
   ///

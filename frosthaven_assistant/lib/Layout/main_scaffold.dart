@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:frosthaven_assistant/Layout/ModifierDeckWidget/modifier_deck_widget.dart';
 import 'package:frosthaven_assistant/Layout/background.dart';
-import 'package:frosthaven_assistant/Layout/section_list.dart';
 import 'package:frosthaven_assistant/Layout/top_bar.dart';
 import 'package:frosthaven_assistant/Resource/app_constants.dart';
 import 'package:frosthaven_assistant/Resource/state/game_state.dart';
@@ -19,6 +18,7 @@ import 'MainList/main_list.dart';
 import 'attack_mode/attack_mode_controller.dart';
 import 'attack_mode/attack_mode_panel.dart';
 import 'bottom_bar.dart';
+import 'section_list.dart';
 import 'bottom_overlay.dart';
 import 'character_amds_widget.dart';
 import 'empty_board_prompt.dart';
@@ -200,7 +200,6 @@ class MainScaffoldBody extends StatelessWidget {
                         listenable: Listenable.merge([
                           vm.scenario,
                           vm.currentCampaign,
-                          vm.scenarioSectionsVersion,
                           vm.lootDeckCardCount,
                           vm.hideLootDeck,
                           vm.showAmdDeckNotifier,
@@ -216,13 +215,6 @@ class MainScaffoldBody extends StatelessWidget {
                                 final bool hasLootDeck = vm.hasLootDeck;
                                 final bool modFitsOnBar =
                                     modifiersFitOnBar(context);
-                                final int? nrOfSections = vm.availableSections;
-                                final bool separateRow =
-                                    vm.sectionsOnSeparateRow(context);
-                                final double width = separateRow
-                                    ? screenSize.width
-                                    : vm.sectionWidth(context);
-
                                 return Positioned(
                                     width: screenSize.width,
                                     bottom: barScale * _kBarBottom,
@@ -231,9 +223,7 @@ class MainScaffoldBody extends StatelessWidget {
                                     child: ReportBottomOverlayHeight(
                                         child: Column(children: [
                                       Row(
-                                          mainAxisAlignment: ((!separateRow &&
-                                                      nrOfSections != null) ||
-                                                  hasLootDeck)
+                                          mainAxisAlignment: hasLootDeck
                                               ? MainAxisAlignment.spaceBetween
                                               : MainAxisAlignment.end,
                                           crossAxisAlignment:
@@ -242,12 +232,6 @@ class MainScaffoldBody extends StatelessWidget {
                                           children: [
                                             if (hasLootDeck)
                                               const LootDeckWidget(),
-                                            if (!separateRow &&
-                                                nrOfSections != null)
-                                              SizedBox(
-                                                width: width,
-                                                child: const SectionList(),
-                                              ),
                                             Column(children: [
                                               RepaintBoundary(
                                                   child: CharacterAmdsWidget()),
@@ -281,12 +265,18 @@ class MainScaffoldBody extends StatelessWidget {
                                                     ))
                                             ])
                                           ]),
-                                      if (separateRow && nrOfSections != null)
-                                        SizedBox(
-                                          width: width,
-                                          child: const RepaintBoundary(
-                                              child: SectionList()),
-                                        ),
+                                      // Swerski: only when the bottom bar has
+                                      // no room for them (a narrow screen).
+                                      ValueListenableBuilder<bool>(
+                                          valueListenable: sectionsDontFitInBar,
+                                          builder: (context, needsRow, _) =>
+                                              needsRow
+                                                  ? SizedBox(
+                                                      width: screenSize.width,
+                                                      child: const RepaintBoundary(
+                                                          child: SectionList()),
+                                                    )
+                                                  : const SizedBox.shrink()),
                                     ])));
                               });
                         });

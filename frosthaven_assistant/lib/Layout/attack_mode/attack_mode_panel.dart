@@ -2,6 +2,7 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 
+import '../../Resource/app_constants.dart';
 import '../../Resource/enums.dart';
 import '../../Resource/game_methods.dart';
 import '../../Resource/settings.dart';
@@ -26,12 +27,11 @@ class AttackModePanel extends StatelessWidget {
   static const double _kPad = 10.0;
   static const double _kChipWidth = 46.0;
   static const double _kChipHeight = 50.0;
+  static const double _kDeadSkull = 28.0;
   static const double _kPortraitSize = 48.0;
-  static const double _kRoundButton = 42.0;
   static const double _kMinCell = 62.0;
   static const double _kMaxRing = 74.0;
   static const double _kRingStroke = 5.0;
-  static const double _kTwoUpWidth = 460.0;
   // On a narrow screen Undo may take this much of the width, so the title
   // always has room.
   static const double _kUndoShare = 0.32;
@@ -48,6 +48,12 @@ class AttackModePanel extends StatelessWidget {
   static const Color _kElite = Color(0xFFE2B33C);
   static const Color _kEliteBorder = Color(0xFF8C6A12);
   static const Color _kDeadFill = Color(0xFFEADFC4);
+  // the strip the counters sit on: parchment a shade darker
+  static const Color _kPlate = Color(0xFFEBDFC1);
+  // inside a ring that is on for everyone: a faint wash of the wax red
+  static const Color _kSealed = Color(0xFFF2D4C8);
+  // a killed standee: red border and number
+  static const Color _kDeadRed = Color(0xFFC62828);
 
   const AttackModePanel(
       {super.key, this.controller, this.gameState, this.settings});
@@ -91,21 +97,26 @@ class AttackModePanel extends StatelessWidget {
                         children: [
                           SizedBox(
                             width: left,
-                            child: SingleChildScrollView(
+                            child: Padding(
                               padding: EdgeInsets.fromLTRB(pad, pad, pad, bottom),
-                              child: _monsters(context, attack, gs, s),
+                              child: _fit(
+                                  left - 2 * pad,
+                                  _monsters(context, attack, gs, s)),
                             ),
                           ),
                           Container(width: 1.5, color: kParchmentBorder),
                           Expanded(
-                            child: LayoutBuilder(
-                              builder: (context, inner) => SingleChildScrollView(
+                            child: LayoutBuilder(builder: (context, inner) {
+                              final width = inner.maxWidth - 2 * pad;
+                              return Padding(
                                 padding:
                                     EdgeInsets.fromLTRB(pad, pad, pad, bottom),
-                                child: _status(context, attack, gs, settings, s,
-                                    inner.maxWidth - 2 * pad),
-                              ),
-                            ),
+                                child: _fit(
+                                    width,
+                                    _status(context, attack, gs, settings, s,
+                                        width)),
+                              );
+                            }),
                           ),
                         ]);
                   },
@@ -117,6 +128,14 @@ class AttackModePanel extends StatelessWidget {
       ),
     );
   }
+
+  /// A column at its full size, shrunk (never enlarged) to fit the room it
+  /// has, so however many standees there are, the whole screen shows with no
+  /// scrolling.
+  Widget _fit(double width, Widget content) => FittedBox(
+      fit: BoxFit.scaleDown,
+      alignment: Alignment.topLeft,
+      child: SizedBox(width: width, child: content));
 
   // ── Header: count, Undo (names what it undoes), Done ──────────────────────
 
@@ -296,7 +315,7 @@ class AttackModePanel extends StatelessWidget {
                 ? Colors.red.shade200
                 : _kChip;
     final border = dead
-        ? kSwerskiAccent
+        ? _kDeadRed
         : elite
             ? _kEliteBorder
             : kParchmentBorder;
@@ -314,26 +333,50 @@ class AttackModePanel extends StatelessWidget {
             constraints: BoxConstraints(
                 minWidth: _kChipWidth * s, minHeight: _kChipHeight * s),
             padding: EdgeInsets.symmetric(horizontal: 6 * s),
-            alignment: Alignment.center,
+            // (Killed: no centring, so the corner number is the chip's corner.)
+            alignment: dead ? null : Alignment.center,
             decoration: BoxDecoration(
               color: fill,
               borderRadius: BorderRadius.circular(7 * s),
               border: Border.all(color: border, width: (dead ? 2.5 : 1.5) * s),
             ),
-            child: Column(mainAxisSize: MainAxisSize.min, children: [
-              Text('${t.standeeNr}',
-                  style: TextStyle(
-                      fontSize: 21 * s,
-                      fontWeight: FontWeight.w700,
-                      height: 1.05,
-                      color: dead ? kSwerskiAccent : _kInk,
-                      decoration:
-                          dead ? TextDecoration.lineThrough : TextDecoration.none)),
-              if (hp != null)
-                Text(hp,
-                    key: ValueKey('attack-health-${t.ownerId}-${t.standeeNr}'),
-                    style: TextStyle(fontSize: 14 * s, height: 1.1, color: _kInk)),
-            ]),
+            // Killed: the number in the top left corner and a skull and
+            // crossbones (the solid black one) centred. Alive: the number over
+            // the health.
+            child: dead
+                ? Stack(
+                    alignment: Alignment.center,
+                    clipBehavior: Clip.none,
+                    children: [
+                        Image.asset('assets/images/psd/skull-new.png',
+                            key: ValueKey(
+                                'attack-dead-${t.ownerId}-${t.standeeNr}'),
+                            height: _kDeadSkull * s),
+                        // tucked right into the corner, out of the skull's way
+                        Positioned(
+                            top: -2 * s,
+                            left: -4 * s,
+                            child: Text('${t.standeeNr}',
+                                style: TextStyle(
+                                    fontSize: 15 * s,
+                                    fontWeight: FontWeight.w700,
+                                    height: 1.1,
+                                    color: _kDeadRed))),
+                      ])
+                : Column(mainAxisSize: MainAxisSize.min, children: [
+                    Text('${t.standeeNr}',
+                        style: TextStyle(
+                            fontSize: 21 * s,
+                            fontWeight: FontWeight.w700,
+                            height: 1.05,
+                            color: _kInk)),
+                    if (hp != null)
+                      Text(hp,
+                          key: ValueKey(
+                              'attack-health-${t.ownerId}-${t.standeeNr}'),
+                          style: TextStyle(
+                              fontSize: 14 * s, height: 1.1, color: _kInk)),
+                  ]),
           )),
           if (on && !dead)
             Positioned(
@@ -390,54 +433,63 @@ class AttackModePanel extends StatelessWidget {
     final cols = (width / (_kMinCell * s)).floor().clamp(3, 9);
     final cell = width / cols;
 
+    // A manuscript-style heading: the label, then a thin rule running out to
+    // the edge. The rule shows where a group starts.
     Widget label(String text) => Padding(
-          padding: EdgeInsets.only(top: 10 * s, bottom: 2 * s),
-          child: Text(text, style: TextStyle(fontSize: 17 * s, color: _kMuted)),
+          padding: EdgeInsets.only(top: 12 * s, bottom: 4 * s),
+          child: Row(children: [
+            Text(text, style: TextStyle(fontSize: 17 * s, color: _kMuted)),
+            SizedBox(width: 8 * s),
+            Expanded(
+                child: Container(
+                    height: 1.5,
+                    color: kParchmentBorder.withValues(alpha: 0.45))),
+          ]),
         );
 
+    // The same compact − icon + steppers as the single-standee menu, so
+    // several fit on a line and the screen stays short.
     final counters = <Widget>[
-      _counterRow(
+      _stepper(
         s: s,
         key: 'health',
         icon: 'assets/images/abilities/heal.png',
-        tint: kSwerskiAccent,
+        tint: Colors.red,
         name: l10n.attackHealthEach,
         onMinus: () => attack.changeHealth(-1),
         onPlus: () => attack.changeHealth(1),
       ),
       if (showDeck) ...[
-        _deckCounter(s, 'bless', 'assets/images/abilities/bless.png',
-            l10n.attackBless, deck, attack, l10n),
-        _deckCounter(s, 'curse', 'assets/images/abilities/curse.png',
-            l10n.attackCurse, deck, attack, l10n),
+        _deckStepper(s, 'bless', 'assets/images/abilities/bless.png',
+            l10n.attackBless, deck, attack),
+        _deckStepper(s, 'curse', 'assets/images/abilities/curse.png',
+            l10n.attackCurse, deck, attack),
       ],
       if (custom)
-        _counterRow(
+        _stepper(
           s: s,
           key: 'chill',
           icon: 'assets/images/abilities/chill.png',
           name: l10n.attackChill,
-          total: attack.chillTotal == 0
-              ? l10n.attackNone
-              : l10n.attackInTotal(attack.chillTotal),
+          // what the selected standees carry, added up (nothing when none)
+          count: attack.chillTotal == 0 ? null : attack.chillTotal,
           onMinus: () => attack.changeChill(-1),
           onPlus: () => attack.changeChill(1),
         ),
     ];
-    // Wide enough: two counters side by side, so the conditions get the room.
-    final twoUp = width >= _kTwoUpWidth * s;
-    final gap = 18 * s;
 
     return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-      if (twoUp)
-        Wrap(
-            spacing: gap,
-            children: [
-              for (final c in counters)
-                SizedBox(width: (width - gap) / 2, child: c)
-            ])
-      else
-        ...counters,
+      Container(
+        width: double.infinity, // lines up with the headings' rules
+        padding: EdgeInsets.symmetric(horizontal: 10 * s, vertical: 4 * s),
+        decoration: BoxDecoration(
+          color: _kPlate,
+          borderRadius: BorderRadius.circular(8 * s),
+          border: Border.all(
+              color: kParchmentBorder.withValues(alpha: 0.5), width: 1.5),
+        ),
+        child: Wrap(spacing: 16 * s, runSpacing: 2 * s, children: counters),
+      ),
       label(l10n.attackHarmful),
       _grid(cell, [
         for (final c in harmful) _tile(attack, settings, c, s, cell, l10n),
@@ -456,16 +508,16 @@ class AttackModePanel extends StatelessWidget {
     ]);
   }
 
-  Widget _deckCounter(double s, String id, String icon, String name,
-      ModifierDeck deck, AttackModeController attack, AppLocalizations l10n) {
+  Widget _deckStepper(double s, String id, String icon, String name,
+      ModifierDeck deck, AttackModeController attack) {
     return ValueListenableBuilder<int>(
       valueListenable: deck.getRemovable(id),
-      builder: (context, value, _) => _counterRow(
+      builder: (context, value, _) => _stepper(
         s: s,
         key: id,
         icon: icon,
         name: name,
-        total: value == 0 ? l10n.attackNone : l10n.attackInDeck(value),
+        count: value, // cards of this kind in the monster deck
         onMinus: () =>
             id == 'bless' ? attack.changeBless(-1) : attack.changeCurse(-1),
         onPlus: () =>
@@ -474,69 +526,57 @@ class AttackModePanel extends StatelessWidget {
     );
   }
 
-  Widget _counterRow({
+  /// − icon +, with a count on the icon: looks like the counters in the
+  /// single-standee menu.
+  Widget _stepper({
     required double s,
     required String key,
     required String icon,
     required String name,
     required VoidCallback onMinus,
     required VoidCallback onPlus,
-    Color? tint,
-    String? total,
+    Color tint = Colors.white,
+    int? count,
   }) {
-    return Padding(
-      padding: EdgeInsets.symmetric(vertical: 3 * s),
-      child: Row(children: [
-        SizedBox(
-          width: 30 * s,
-          height: 30 * s,
-          child: Image(
-              fit: BoxFit.contain,
-              color: tint,
-              colorBlendMode: tint == null ? null : BlendMode.srcIn,
-              image: AssetImage(icon)),
-        ),
-        SizedBox(width: 10 * s),
-        // The total sits under the name, so a narrow column never overflows.
-        Expanded(
-          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text(name,
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(
-                    fontSize: 20 * s, height: 1.05, fontWeight: FontWeight.w600)),
-            if (total != null)
-              Text(total,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(fontSize: 15 * s, height: 1, color: _kMuted)),
-          ]),
-        ),
-        _round(s, '−', ValueKey('attack-$key-minus'), onMinus),
-        SizedBox(width: 8 * s),
-        _round(s, '+', ValueKey('attack-$key-plus'), onPlus),
+    // Icons only on screen; the name is just for screen readers.
+    return Semantics(
+      label: name,
+      container: true,
+      child: Row(mainAxisSize: MainAxisSize.min, children: [
+        _stepButton(s, 'assets/images/psd/sub.png', ValueKey('attack-$key-minus'),
+            onMinus),
+        Stack(children: [
+          SizedBox(
+            width: kIconSize * s,
+            height: kIconSize * s,
+            child: Image(
+                color: tint,
+                colorBlendMode: BlendMode.modulate,
+                fit: BoxFit.contain,
+                image: AssetImage(icon)),
+          ),
+          if (count != null)
+            Positioned(
+                bottom: 0,
+                right: 0,
+                child: Text('$count',
+                    style: getWhiteShadowStyle(
+                        kFontSizeBody * s, textShadow(s),
+                        height: 0.5))),
+        ]),
+        _stepButton(s, 'assets/images/psd/add.png', ValueKey('attack-$key-plus'),
+            onPlus),
       ]),
     );
   }
 
-  Widget _round(double s, String text, Key key, VoidCallback onTap) {
+  Widget _stepButton(double s, String image, Key key, VoidCallback onTap) {
     return SizedBox(
-      width: _kRoundButton * s,
-      height: _kRoundButton * s,
-      child: Material(
-        color: _kChip,
-        shape: const CircleBorder(
-            side: BorderSide(color: kParchmentBorder, width: 2)),
-        child: InkWell(
+      width: kButtonSize * s,
+      height: kButtonSize * s,
+      child: IconButton(
           key: key,
-          customBorder: const CircleBorder(),
-          onTap: onTap,
-          child: Center(
-              child: Text(text,
-                  style: TextStyle(
-                      fontSize: 26 * s, height: 1, color: _kInk))),
-        ),
-      ),
+          icon: Image.asset(image), onPressed: onTap),
     );
   }
 
@@ -626,7 +666,9 @@ class AttackModePanel extends StatelessWidget {
               ? l10n.attackAll
               : '${r.count}/${r.of}',
       icon: icon,
-      inner: isMark ? vm.classColor : kParchment,
+      inner: isMark
+          ? vm.classColor
+          : (r.of > 0 && r.count == r.of ? _kSealed : kParchment),
       opacity: immuneToAll ? _kImmuneAlpha : 1,
       onTap: immuneToAll ? null : () => attack.toggleCondition(condition),
     );

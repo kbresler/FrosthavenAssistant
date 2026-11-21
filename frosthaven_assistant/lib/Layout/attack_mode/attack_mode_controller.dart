@@ -163,6 +163,25 @@ class AttackModeController {
     picked.value = list;
   }
 
+  /// Picks every standee of [monster] that is on the board, or lets them all
+  /// go when they are all picked already.
+  void togglePickMonster(Monster monster) {
+    final instances =
+        monster.monsterInstances.where((i) => i.health.value > 0).toList();
+    if (instances.isEmpty) return;
+    final allPicked = instances.every((i) => isPicked(monster.id, i.getId()));
+    final list = List<AttackTarget>.of(picked.value);
+    for (final i in instances) {
+      final target = AttackTarget.of(i, monster.id);
+      if (allPicked) {
+        list.remove(target);
+      } else if (!list.contains(target)) {
+        list.add(target);
+      }
+    }
+    picked.value = list;
+  }
+
   /// Starts attacking with everything picked. Does nothing when empty.
   void startAttack() {
     if (picked.value.isEmpty) return;

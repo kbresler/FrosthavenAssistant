@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:frosthaven_assistant/Layout/attack_mode/attack_mode_controller.dart';
 import 'package:frosthaven_assistant/Layout/section_button.dart';
+import 'package:frosthaven_assistant/Layout/theme.dart';
+import 'package:frosthaven_assistant/Resource/settings.dart';
 import 'package:frosthaven_assistant/Resource/commands/set_scenario_command.dart';
 import 'package:frosthaven_assistant/Resource/state/game_state.dart';
 import 'package:frosthaven_assistant/services/service_locator.dart';
@@ -68,6 +70,41 @@ void main() {
       attack.end();
       await tester.pump();
       expect(button().onPressed, isNotNull);
+    });
+
+    testWidgets('Swerski: on parchment, with dark text and a brown border',
+        (WidgetTester tester) async {
+      expect(getIt<Settings>().parchmentMenus.value, isTrue); // the default
+      await pumpWidget(tester, 'test-parchment-section');
+      final button = tester.widget<OutlinedButton>(find.byType(OutlinedButton));
+      expect(button.style!.backgroundColor!.resolve({}), kParchment);
+      expect(button.style!.side!.resolve({})!.color, kParchmentBorder);
+      final text = tester.widget<Text>(find.text('test-parchment-section'));
+      expect(text.style!.color, isNot(Colors.white)); // readable on parchment
+      expect(text.style!.shadows, isEmpty); // no glow
+    });
+
+    testWidgets('and the official grey look when parchment is off',
+        (WidgetTester tester) async {
+      getIt<Settings>().parchmentMenus.value = false;
+      addTearDown(() => getIt<Settings>().parchmentMenus.value = true);
+      await pumpWidget(tester, 'test-grey-section');
+      final button = tester.widget<OutlinedButton>(find.byType(OutlinedButton));
+      expect(button.style!.backgroundColor!.resolve({}), Colors.grey.shade400);
+    });
+
+    testWidgets('a section already added looks used (dimmed parchment)',
+        (WidgetTester tester) async {
+      const sectionName = 'test-used-parchment';
+      SetScenarioCommand(sectionName, true, gameState: getIt<GameState>())
+          .execute();
+      await pumpWidget(tester, sectionName);
+      final button = tester.widget<OutlinedButton>(find.byType(OutlinedButton));
+      expect(button.onPressed, isNull);
+      final enabledBg = button.style!.backgroundColor!.resolve({});
+      final usedBg =
+          button.style!.backgroundColor!.resolve({WidgetState.disabled});
+      expect(usedBg, isNot(enabledBg));
     });
 
     testWidgets('button is disabled after section is added via command',

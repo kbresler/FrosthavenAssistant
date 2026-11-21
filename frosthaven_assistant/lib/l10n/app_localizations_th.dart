@@ -269,6 +269,15 @@ class AppLocalizationsTh extends AppLocalizations {
   String get attackSelectNone => 'Select none';
 
   @override
+  String get attackHarmful => 'Harmful';
+
+  @override
+  String get attackHelpful => 'Helpful';
+
+  @override
+  String get attackMarks => 'Character marks';
+
+  @override
   String get attackHoldHint => 'Hold a standee for just that one.';
 
   @override
@@ -284,38 +293,16 @@ class AppLocalizationsTh extends AppLocalizations {
   String get attackChill => 'Chill';
 
   @override
-  String get attackHarmful => 'Harmful';
-
-  @override
-  String get attackHelpful => 'Helpful';
-
-  @override
-  String get attackMarks => 'Character marks';
-
-  @override
   String attackKilled(int count) {
     return '$count killed';
   }
 
   @override
-  String get attackNone => 'none';
-
-  @override
   String get attackAll => 'all';
-
-  @override
-  String attackInTotal(int count) {
-    return '$count in total';
-  }
 
   @override
   String attackDeckAndLeft(String deck, int left) {
     return '$deck · $left left';
-  }
-
-  @override
-  String attackInDeck(int count) {
-    return '$count in the deck';
   }
 
   @override

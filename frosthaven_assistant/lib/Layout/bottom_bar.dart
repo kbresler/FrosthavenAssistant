@@ -9,6 +9,9 @@ import '../Resource/state/game_state.dart';
 import '../Resource/ui_utils.dart';
 import 'ModifierDeckWidget/modifier_deck_widget.dart';
 import 'bottom_bar_level_widget.dart';
+import 'section_list.dart';
+import 'view_models/main_scaffold_view_model.dart';
+import '../services/service_locator.dart';
 
 class BottomBar extends StatelessWidget {
   const BottomBar({super.key, this.settings, this.gameState});
@@ -59,11 +62,18 @@ class BottomBar extends StatelessWidget {
                                       repeat: ImageRepeat.repeatX),
                                 ),
                                 child: Row(
-                                  mainAxisAlignment:
-                                      MainAxisAlignment.spaceBetween,
                                   children: [
                                     const DrawButton(),
+                                    // Swerski: the scenario and level sit by
+                                    // the Draw button, the section buttons
+                                    // next, and what is left of the bar
+                                    // goes to them (they scroll if there are
+                                    // more than fit).
                                     BottomBarLevelWidget(),
+                                    Expanded(
+                                        child: _SectionsInBar(
+                                            settings: settings,
+                                            gameState: gameState)),
                                     const NetworkUI(),
                                     if (vm.showModifierDeck(context))
                                       const ModifierDeckWidget(name: '')
@@ -72,6 +82,64 @@ class BottomBar extends StatelessWidget {
                           }),
                     )
                   ])));
+        });
+  }
+}
+
+/// Swerski: true when the bottom bar has no room for the section buttons (a
+/// narrow screen), so the main screen shows them in a row above the bar
+/// instead, as it always did.
+final ValueNotifier<bool> sectionsDontFitInBar = ValueNotifier<bool>(false);
+
+/// The scenario's section buttons, in the bottom bar. Shown under the same
+/// conditions as before (the setting is on, and some are still to be added);
+/// a row that scrolls sideways when there are more than fit. With room for
+/// less than one button, it steps aside (see [sectionsDontFitInBar]).
+class _SectionsInBar extends StatelessWidget {
+  static const double _kFitWidth = 60.0;
+
+  const _SectionsInBar({this.settings, this.gameState});
+
+  final Settings? settings;
+  final GameState? gameState;
+
+  // Not while building: listeners rebuild the main screen.
+  void _report(bool dontFit) {
+    if (sectionsDontFitInBar.value == dontFit) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      sectionsDontFitInBar.value = dontFit;
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final vm = MainScaffoldViewModel(gameState: gameState, settings: settings);
+    final barSettings = settings ?? getIt<Settings>();
+    return ListenableBuilder(
+        listenable: Listenable.merge([
+          vm.scenario,
+          vm.currentCampaign,
+          vm.scenarioSectionsVersion,
+          vm.modelData,
+          barSettings.showSectionsInMainView,
+          barSettings.userScalingBars,
+        ]),
+        builder: (context, _) {
+          if (vm.availableSections == null) {
+            _report(false);
+            return const SizedBox.shrink();
+          }
+          return LayoutBuilder(builder: (context, box) {
+            final fits =
+                box.maxWidth >= _kFitWidth * barSettings.userScalingBars.value;
+            _report(!fits);
+            if (!fits) return const SizedBox.shrink();
+            return SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                child: Center(
+                    child:
+                        SectionList(settings: settings, gameState: gameState)));
+          });
         });
   }
 }

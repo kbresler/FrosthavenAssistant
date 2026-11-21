@@ -2,6 +2,7 @@ import 'package:built_collection/built_collection.dart';
 import 'package:flutter/material.dart';
 import 'package:frosthaven_assistant/Layout/MonsterAbilityCardWidget/monster_ability_card_widget.dart';
 import 'package:frosthaven_assistant/Layout/MonsterBox/monster_box.dart';
+import 'package:frosthaven_assistant/Layout/attack_mode/attack_mode_controller.dart';
 import 'package:frosthaven_assistant/Layout/view_models/monster_widget_view_model.dart';
 import 'package:frosthaven_assistant/Resource/app_constants.dart';
 import 'package:frosthaven_assistant/Resource/scaling.dart';
@@ -100,21 +101,31 @@ class MonsterWidgetState extends State<MonsterWidget> {
               children: [
                 Row(
                   children: [
-                    _vm.showTurnTap
-                        ? InkWell(
-                            onTap: () {
-                              _vm.endTurn();
-                            },
-                            child: MonsterImagePart(
-                                data: widget.data,
-                                scale: scale,
-                                height: height,
-                                vm: _vm))
-                        : MonsterImagePart(
-                            data: widget.data,
-                            scale: scale,
-                            height: height,
-                            vm: _vm),
+                    // Swerski: while picking standees to attack, the portrait
+                    // picks all of this monster's standees (and does not end
+                    // its turn).
+                    ListenableBuilder(
+                        listenable: attackModeController().phase,
+                        builder: (context, _) {
+                          final part = MonsterImagePart(
+                              data: widget.data,
+                              scale: scale,
+                              height: height,
+                              vm: _vm);
+                          if (attackModeController().isSelecting) {
+                            return InkWell(
+                                onTap: () => attackModeController()
+                                    .togglePickMonster(widget.data),
+                                child: part);
+                          }
+                          return _vm.showTurnTap
+                              ? InkWell(
+                                  onTap: () {
+                                    _vm.endTurn();
+                                  },
+                                  child: part)
+                              : part;
+                        }),
                     RepaintBoundary(
                         child: MonsterAbilityCardWidget(data: widget.data)),
                     RepaintBoundary(

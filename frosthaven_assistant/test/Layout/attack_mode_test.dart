@@ -3,6 +3,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:frosthaven_assistant/Layout/MonsterBox/monster_box.dart';
+import 'package:frosthaven_assistant/Layout/MonsterWidget/monster_image_part.dart';
+import 'package:frosthaven_assistant/Layout/MonsterWidget/monster_widget.dart';
 import 'package:frosthaven_assistant/Layout/attack_mode/attack_mode_controller.dart';
 import 'package:frosthaven_assistant/Layout/attack_mode/attack_mode_panel.dart';
 import 'package:frosthaven_assistant/Layout/menus/StatusMenu/status_menu.dart';
@@ -75,6 +77,22 @@ void main() {
       attack.togglePick(standee(1), _monsterName);
       expect(attack.isPicked(_monsterName, standee(1).getId()), isFalse);
       expect(attack.isPicked(_monsterName, standee(2).getId()), isTrue);
+    });
+
+    test('picking a monster picks all its standees, and again lets them go', () {
+      attack.startSelecting();
+      final monster = currentMonster();
+      attack.togglePickMonster(monster);
+      expect(attack.picked.value.length, 3);
+
+      // one already picked, then the rest are added (not duplicated)
+      attack.togglePick(standee(1), _monsterName); // unpick 1
+      expect(attack.picked.value.length, 2);
+      attack.togglePickMonster(monster);
+      expect(attack.picked.value.length, 3);
+
+      attack.togglePickMonster(monster); // all picked: let them all go
+      expect(attack.picked.value, isEmpty);
     });
 
     test('starting from a standee menu pre-picks that standee', () {
@@ -388,6 +406,75 @@ void main() {
       expect(chip.dx, lessThan(health.dx));
     });
 
+    // The panel scales its columns down to fit, so nothing ever sticks out
+    // below the bottom or needs scrolling.
+    Future<void> expectEverythingInside(WidgetTester tester) async {
+      final panel = tester.getRect(find.byType(AttackModePanel));
+      for (final key in [
+        const ValueKey('attack-condition-ward'), // the last status tile
+        const ValueKey('attack-kill'),
+      ]) {
+        final f = find.byKey(key);
+        if (f.evaluate().isEmpty) continue;
+        final r = tester.getRect(f);
+        expect(r.bottom, lessThanOrEqualTo(panel.bottom + 0.5),
+            reason: '$key is inside the panel');
+        expect(r.right, lessThanOrEqualTo(panel.right + 0.5));
+      }
+      // and every standee chip
+      for (final element in find
+          .byWidgetPredicate((w) =>
+              w.key is ValueKey<String> &&
+              (w.key! as ValueKey<String>).value.startsWith('attack-health-'))
+          .evaluate()) {
+        final r = tester.getRect(find.byWidget(element.widget));
+        expect(r.bottom, lessThanOrEqualTo(panel.bottom + 0.5));
+      }
+      expect(find.byType(Scrollable), findsNothing);
+    }
+
+    for (final size in const [Size(800, 430), Size(1280, 600)]) {
+      testWidgets('two monsters fit the panel at $size, nothing to scroll',
+          (tester) async {
+        tester.view.physicalSize = size;
+        tester.view.devicePixelRatio = 1;
+        addTearDown(tester.view.reset);
+        for (final name in ['Zealot', 'Black Sludge']) {
+          gs.action(AddMonsterCommand(name, 1, false, gameState: gs));
+          for (final nr in [1, 2]) {
+            gs.action(AddStandeeCommand(
+                nr, null, name, MonsterType.normal, false,
+                gameState: gs));
+          }
+        }
+        attack.startSelecting();
+        for (final m in gs.currentList
+            .whereType<Monster>()
+            .where((m) => m.id == 'Zealot' || m.id == 'Black Sludge')) {
+          for (final i in m.monsterInstances) {
+            attack.togglePick(i, m.id);
+          }
+        }
+        attack.startAttack();
+        await pump(tester, AttackModePanel(controller: attack));
+        await expectEverythingInside(tester);
+      });
+    }
+
+    testWidgets('a few standees keep their full size (nothing shrinks needlessly)',
+        (tester) async {
+      tester.view.physicalSize = const Size(1280, 800);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.reset);
+      pickAndAttack([1, 2]);
+      await pump(tester, AttackModePanel(controller: attack));
+      final chip = tester.getRect(find.ancestor(
+          of: find.byKey(ValueKey('attack-health-$_monsterName-1')),
+          matching: find.byType(Container)).first);
+      // the chip is its designed size (46 x 50 times the tablet scale), not shrunk
+      expect(chip.height, greaterThanOrEqualTo(50));
+    });
+
     // Strict: unlike the other tests, an overflow here fails the test.
     for (final size in const [Size(375, 700), Size(1024, 700)]) {
       testWidgets('four monster types with many standees fit at $size',
@@ -436,14 +523,66 @@ void main() {
         FlutterError.onError = prev;
         expect(seen, isEmpty);
 
-        // Every chip can be reached by scrolling, and the screen still works.
+        // Everything is shown (scaled to fit), nothing to scroll.
         expect(find.text('Select none'), findsOneWidget);
-        await tester.drag(find.byType(SingleChildScrollView).first,
-            const Offset(0, -2000));
-        await tester.pump();
-        expect(tester.takeException(), isNull);
+        await expectEverythingInside(tester);
       });
     }
+
+    testWidgets('a killed standee: red border and number, skull for health',
+        (tester) async {
+      pickAndAttack([1, 2, 3]);
+      attack.toggleActive(attack.roster.value[2]); // standee 3 stays alive
+      await pump(tester, AttackModePanel(controller: attack));
+      final skull1 = find.byKey(ValueKey('attack-dead-$_monsterName-1'));
+      final health1 = find.byKey(ValueKey('attack-health-$_monsterName-1'));
+      expect(skull1, findsNothing);
+      expect(health1, findsOneWidget);
+
+      attack.kill();
+      // a kill schedules a short refresh: let it run inside the test
+      await tester.pump(const Duration(seconds: 1));
+      for (final nr in [1, 2]) {
+        expect(find.byKey(ValueKey('attack-dead-$_monsterName-$nr')),
+            findsOneWidget);
+        // the health text gives way to the skull
+        expect(find.byKey(ValueKey('attack-health-$_monsterName-$nr')),
+            findsNothing);
+      }
+      // standee 3 was not killed: still health, no skull
+      expect(find.byKey(ValueKey('attack-dead-$_monsterName-3')), findsNothing);
+      expect(find.byKey(ValueKey('attack-health-$_monsterName-3')),
+          findsOneWidget);
+
+      // the number sits in the chip's top left corner; the skull is a good
+      // size and centred in the chip
+      final chipRect = tester.getRect(find.ancestor(
+          of: find.byKey(ValueKey('attack-dead-$_monsterName-1')),
+          matching: find.byType(Container)).first);
+      final numberRect = tester.getRect(find.text('1').first);
+      final skullRect =
+          tester.getRect(find.byKey(ValueKey('attack-dead-$_monsterName-1')));
+      expect(numberRect.center.dx, lessThan(chipRect.center.dx));
+      expect(numberRect.center.dy, lessThan(chipRect.center.dy));
+      expect(numberRect.left - chipRect.left, lessThan(chipRect.width / 3));
+      // a good size for the chip, whatever the screen's scale
+      expect(skullRect.height / chipRect.height, inInclusiveRange(0.5, 0.62));
+      expect((skullRect.center.dx - chipRect.center.dx).abs(), lessThan(2));
+      expect((skullRect.center.dy - chipRect.center.dy).abs(), lessThan(2));
+
+      // the number is red, and the chip's border is red
+      final number = tester.widget<Text>(find.text('1').first);
+      expect(number.style!.color!.r, greaterThan(number.style!.color!.g * 2));
+      final chip = tester.widget<Container>(find
+          .ancestor(of: find.text('1').first, matching: find.byType(Container))
+          .first);
+      final border = (chip.decoration! as BoxDecoration).border! as Border;
+      expect(border.top.color.r, greaterThan(border.top.color.g * 2));
+
+      // Undo brings the standees back: health again, no skull
+      attack.end();
+      gs.undo();
+    });
 
     testWidgets('a condition tile applies to the switched-on standees',
         (tester) async {
@@ -485,6 +624,37 @@ void main() {
               alignment: Alignment.topLeft,
               child: SizedBox(width: 800, height: 60, child: TopBar())));
       expect(find.byKey(const ValueKey('attack-sword')), findsNothing);
+    });
+
+    testWidgets('while picking, the monster portrait picks all its standees',
+        (tester) async {
+      final global = attackModeController();
+      global.startSelecting();
+      await pump(tester, MonsterWidget(data: currentMonster()));
+      await tester.tap(find.byType(MonsterImagePart));
+      await tester.pump();
+      expect(global.picked.value.length, 3);
+
+      await tester.tap(find.byType(MonsterImagePart));
+      await tester.pump();
+      expect(global.picked.value, isEmpty);
+    });
+
+    testWidgets('while picking, the portrait does not end the monster\'s turn',
+        (tester) async {
+      DrawCommand(gameState: gs).execute();
+      // Draw schedules a refresh a moment later: let it run inside the test.
+      await tester.pump(const Duration(seconds: 1));
+      addTearDown(() => gs.undo());
+      final global = attackModeController();
+      global.startSelecting();
+      final index = gs.commandIndex.value;
+      await pump(tester, MonsterWidget(data: currentMonster()));
+      await tester.tap(find.byType(MonsterImagePart));
+      await tester.pump();
+      // Ending a turn is an action; picking is not.
+      expect(gs.commandIndex.value, index);
+      expect(global.picked.value.length, 3);
     });
 
     testWidgets('while picking, tapping a standee picks it (no menu)',
