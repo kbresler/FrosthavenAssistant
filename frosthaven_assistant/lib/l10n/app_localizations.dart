@@ -881,6 +881,18 @@ abstract class AppLocalizations {
   /// **'Character Decks'**
   String get characterDecks;
 
+  /// No description provided for @deckTabMonsters.
+  ///
+  /// In en, this message translates to:
+  /// **'Monsters'**
+  String get deckTabMonsters;
+
+  /// No description provided for @deckTabCharacters.
+  ///
+  /// In en, this message translates to:
+  /// **'Characters'**
+  String get deckTabCharacters;
+
   /// No description provided for @shuffleAndDraw.
   ///
   /// In en, this message translates to:

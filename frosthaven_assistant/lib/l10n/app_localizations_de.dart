@@ -425,6 +425,12 @@ class AppLocalizationsDe extends AppLocalizations {
   String get characterDecks => 'Charakterstapel';
 
   @override
+  String get deckTabMonsters => 'Monsters';
+
+  @override
+  String get deckTabCharacters => 'Characters';
+
+  @override
   String get shuffleAndDraw => 'Mischen\n& Ziehen';
 
   @override

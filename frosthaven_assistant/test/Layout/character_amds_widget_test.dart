@@ -5,6 +5,7 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:frosthaven_assistant/Layout/ModifierDeckWidget/modifier_deck_widget.dart';
 import 'package:frosthaven_assistant/Layout/character_amds_widget.dart';
+import 'package:frosthaven_assistant/Layout/theme.dart';
 import 'package:frosthaven_assistant/Resource/commands/add_character_command.dart';
 import 'package:frosthaven_assistant/Resource/commands/draw_modifier_card_command.dart';
 import 'package:frosthaven_assistant/Resource/commands/remove_character_command.dart';
@@ -73,12 +74,145 @@ void main() {
       },
     );
 
-    testWidgets('renders ElevatedButton when character with perks exists', (
+    testWidgets(
+        'renders ElevatedButton when character with perks exists '
+        '(parchment menus off)', (
+      WidgetTester tester,
+    ) async {
+      getIt<Settings>().parchmentMenus.value = false;
+      addTearDown(() => getIt<Settings>().parchmentMenus.value = true);
+      AddCharacterCommand('Blinkblade', 'Frosthaven', null, 1).execute();
+      await pumpWidget(tester);
+      expect(find.byType(ElevatedButton), findsOneWidget);
+    });
+
+    testWidgets('Swerski: open decks sit on a parchment panel under the tab', (
       WidgetTester tester,
     ) async {
       AddCharacterCommand('Blinkblade', 'Frosthaven', null, 1).execute();
       await pumpWidget(tester);
-      expect(find.byType(ElevatedButton), findsOneWidget);
+      expect(find.byType(ElevatedButton), findsNothing);
+      final tab = find.ancestor(
+          of: find.text('Character Decks'), matching: find.byType(InkWell));
+      expect(tab, findsOneWidget);
+      // The panel is the parchment strip behind the deck.
+      final panel = find.byWidgetPredicate((w) =>
+          w is DecoratedBox &&
+          w.decoration is BoxDecoration &&
+          (w.decoration as BoxDecoration).color == kParchment);
+      expect(panel, findsOneWidget);
+      // Tab and panel are one strip: same width, panel right below the tab.
+      expect(tester.getSize(tab).width,
+          closeTo(tester.getSize(panel).width, 1));
+      expect(tester.getTopLeft(panel).dy,
+          closeTo(tester.getBottomLeft(tab).dy, 1));
+      // It runs on below the deck, down behind the bottom bar.
+      expect(tester.getBottomLeft(panel).dy,
+          greaterThan(tester.getBottomLeft(
+                  find.byType(ModifierDeckWidget).first).dy +
+              10));
+      // The deck keeps its full width (room for a second drawn card) and is
+      // centred in the panel, with equal space on both sides.
+      final deckRect = tester.getRect(find.byType(ModifierDeckWidget).first);
+      final panelRect = tester.getRect(panel);
+      expect(deckRect.left - panelRect.left,
+          closeTo(panelRect.right - deckRect.right, 0.5));
+      expect(deckRect.left, greaterThan(panelRect.left));
+      // Decks start open: the arrow points down (tap to close).
+      expect(find.byIcon(Icons.expand_more), findsOneWidget);
+    });
+
+    testWidgets(
+        'Swerski: on a narrow screen the tab splits into Monsters | '
+        'Characters', (WidgetTester tester) async {
+      tester.view.physicalSize = const Size(330, 600);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.reset);
+      AddCharacterCommand('Blinkblade', 'Frosthaven', null, 1).execute();
+      await pumpWidget(tester);
+      expect(find.text('Monsters'), findsOneWidget);
+      expect(find.text('Characters'), findsOneWidget);
+      expect(find.text('Character Decks'), findsNothing);
+      // The strip holds the monster deck too.
+      expect(
+          tester
+              .widgetList<ModifierDeckWidget>(find.byType(ModifierDeckWidget))
+              .any((w) => w.name == ''),
+          isTrue);
+      // Both start open.
+      expect(find.byIcon(Icons.expand_more), findsNWidgets(2));
+    });
+
+    testWidgets(
+        'Swerski: each half opens and closes on its own (four states)',
+        (WidgetTester tester) async {
+      tester.view.physicalSize = const Size(330, 600);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.reset);
+      AddCharacterCommand('Blinkblade', 'Frosthaven', null, 1).execute();
+      await pumpWidget(tester);
+      final originalOnError = FlutterError.onError;
+      addTearDown(() => FlutterError.onError = originalOnError);
+      FlutterError.onError = ignoreOverflowErrors;
+
+      Future<void> tap(String half) async {
+        await tester.tap(find.text(half));
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 500));
+      }
+
+      // Visible height of a deck (0 when folded away).
+      double shown(String name) {
+        final deck = find.byWidgetPredicate(
+            (w) => w is ModifierDeckWidget && w.name == name);
+        final clip = find.ancestor(of: deck, matching: find.byType(ClipRect));
+        return tester.getSize(clip.first).height;
+      }
+
+      // Only characters.
+      await tap('Monsters');
+      expect(shown(''), lessThan(1));
+      expect(shown('Blinkblade'), greaterThan(10));
+      // None.
+      await tap('Characters');
+      expect(shown(''), lessThan(1));
+      expect(shown('Blinkblade'), lessThan(1));
+      expect(find.byIcon(Icons.expand_less), findsNWidgets(2));
+      // Only monsters.
+      await tap('Monsters');
+      expect(shown(''), greaterThan(10));
+      expect(shown('Blinkblade'), lessThan(1));
+      // Both.
+      await tap('Characters');
+      expect(shown(''), greaterThan(10));
+      expect(shown('Blinkblade'), greaterThan(10));
+      FlutterError.onError = originalOnError;
+    });
+
+    testWidgets('Swerski: a wide screen keeps the single Character Decks tab',
+        (WidgetTester tester) async {
+      tester.view.physicalSize = const Size(1600, 900);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.reset);
+      AddCharacterCommand('Blinkblade', 'Frosthaven', null, 1).execute();
+      await pumpWidget(tester);
+      expect(find.text('Character Decks'), findsOneWidget);
+      expect(find.text('Monsters'), findsNothing);
+    });
+
+    testWidgets('Swerski: the arrow flips when the decks close', (
+      WidgetTester tester,
+    ) async {
+      AddCharacterCommand('Blinkblade', 'Frosthaven', null, 1).execute();
+      await pumpWidget(tester);
+      final originalOnError = FlutterError.onError;
+      addTearDown(() => FlutterError.onError = originalOnError);
+      FlutterError.onError = ignoreOverflowErrors;
+      await tester.tap(find.text('Character Decks'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 600));
+      FlutterError.onError = originalOnError;
+      expect(find.byIcon(Icons.expand_less), findsOneWidget);
     });
 
     testWidgets('tapping Character Decks button does not throw', (

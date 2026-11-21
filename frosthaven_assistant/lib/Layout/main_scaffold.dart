@@ -17,10 +17,12 @@ import '../services/service_locator.dart';
 import 'LootDeckWidget/loot_deck_widget.dart';
 import 'MainList/main_list.dart';
 import 'bottom_bar.dart';
+import 'bottom_overlay.dart';
 import 'character_amds_widget.dart';
 import 'empty_board_prompt.dart';
 import 'menus/AutoAddStandeeMenu/auto_add_standee_menu.dart';
 import 'menus/main_menu.dart';
+import 'view_models/character_amds_view_model.dart';
 import 'view_models/main_scaffold_view_model.dart';
 
 class MainScaffold extends StatelessWidget {
@@ -193,7 +195,9 @@ class MainScaffoldBody extends StatelessWidget {
                                     width: screenSize.width,
                                     bottom: barScale * _kBarBottom,
                                     left: barScale * _kBarLeft,
-                                    child: Column(children: [
+                                    // Swerski: the board scrolls clear of it.
+                                    child: ReportBottomOverlayHeight(
+                                        child: Column(children: [
                                       Row(
                                           mainAxisAlignment: ((!separateRow &&
                                                       nrOfSections != null) ||
@@ -227,7 +231,13 @@ class MainScaffoldBody extends StatelessWidget {
                                                     )),
                                               if (!modFitsOnBar &&
                                                   !vm.isButtonsAndBugs &&
-                                                  vm.showAmdDeck)
+                                                  vm.showAmdDeck &&
+                                                  // Swerski: unless the deck
+                                                  // strip holds it.
+                                                  !CharacterAmdsViewModel()
+                                                      .holdsMonsterDeck(
+                                                          fitsOnBar:
+                                                              modFitsOnBar))
                                                 Container(
                                                     margin: EdgeInsets.only(
                                                       top: _kDeckMargin *
@@ -245,7 +255,7 @@ class MainScaffoldBody extends StatelessWidget {
                                           child: const RepaintBoundary(
                                               child: SectionList()),
                                         ),
-                                    ]));
+                                    ])));
                               });
                         });
                   })

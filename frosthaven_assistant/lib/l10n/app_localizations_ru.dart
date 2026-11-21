@@ -421,6 +421,12 @@ class AppLocalizationsRu extends AppLocalizations {
   String get characterDecks => 'Колоды персонажей';
 
   @override
+  String get deckTabMonsters => 'Monsters';
+
+  @override
+  String get deckTabCharacters => 'Characters';
+
+  @override
   String get shuffleAndDraw => 'Перемешать\nи взять';
 
   @override

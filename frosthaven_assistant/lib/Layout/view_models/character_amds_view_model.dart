@@ -19,6 +19,25 @@ class CharacterAmdsViewModel {
 
   double get barScale => _settings.userScalingBars.value;
 
+  // Swerski: together with modifiersFitOnBar, tells whether the monster deck
+  // sits right under the character decks (narrow screens) instead of on the
+  // bottom bar — the same rule the main scaffold uses to place it.
+  bool get showAmdDeck => _settings.showAmdDeck.value;
+  bool get isButtonsAndBugs =>
+      _gameState.currentCampaign.value == "Buttons and Bugs";
+  Settings get settings => _settings;
+
+  /// Swerski: on narrow screens with parchment menus, the character decks'
+  /// parchment strip also holds the monster deck (so it can slide away with
+  /// them). [fitsOnBar] is modifiersFitOnBar for the current screen.
+  bool holdsMonsterDeck({required bool fitsOnBar}) =>
+      _settings.parchmentMenus.value &&
+      !fitsOnBar &&
+      showAmdDeck &&
+      !isButtonsAndBugs &&
+      showCharacterAmd &&
+      characterAmount > 0;
+
   RoundState get roundState => _gameState.roundState.value;
 
   List<Character> get charsWithPerks => GameMethods.getCurrentCharacters()

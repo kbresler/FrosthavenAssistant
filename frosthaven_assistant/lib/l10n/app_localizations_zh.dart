@@ -412,6 +412,12 @@ class AppLocalizationsZh extends AppLocalizations {
   String get characterDecks => '角色牌堆';
 
   @override
+  String get deckTabMonsters => 'Monsters';
+
+  @override
+  String get deckTabCharacters => 'Characters';
+
+  @override
   String get shuffleAndDraw => '洗牌\n并抽牌';
 
   @override

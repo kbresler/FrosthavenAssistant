@@ -414,6 +414,12 @@ class AppLocalizationsTh extends AppLocalizations {
   String get characterDecks => 'สำรับตัวละคร';
 
   @override
+  String get deckTabMonsters => 'Monsters';
+
+  @override
+  String get deckTabCharacters => 'Characters';
+
+  @override
   String get shuffleAndDraw => 'สับ\nและจั่ว';
 
   @override

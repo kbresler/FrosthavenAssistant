@@ -6,6 +6,7 @@ import 'package:reorderables/reorderables.dart';
 
 import '../../Resource/state/game_state.dart';
 import '../../Resource/ui_utils.dart';
+import '../bottom_overlay.dart';
 import '../view_models/main_list_view_model.dart';
 import 'main_list_item.dart';
 
@@ -111,6 +112,8 @@ class _GameListState extends State<GameList> {
   static const int _kTwoColumns = 2;
   static const double _kTopBarHeight = 80.0;
   static const double _kHalfHeightFactor = 0.5;
+  // Swerski: gap kept between the last row and the deck area.
+  static const double _kOverlayClearance = 24.0;
 
   final Map<String, _FlipItemState> _flipStates = {};
   List<Widget> _cachedChildren = const [];
@@ -258,8 +261,18 @@ class _GameListState extends State<GameList> {
     int itemsColumn2 = itemHeights.length - itemsPerColumn;
     itemsPerColumn = max(itemsPerColumn, itemsColumn2);
     itemsPerColumn = _keepLinkedNotesWithTarget(itemsPerColumn);
-    double paddingBottom = _kHalfHeightFactor * screenSize.height;
+    // Swerski: never less than the deck area over the bottom of the board
+    // (plus a little room), so the last row can always scroll clear of it.
+    return ValueListenableBuilder<double>(
+        valueListenable: bottomOverlayHeight,
+        builder: (context, overlayHeight, child) {
+          final paddingBottom = max(_kHalfHeightFactor * screenSize.height,
+              overlayHeight + _kOverlayClearance);
+          return _buildWrap(itemsPerColumn, paddingBottom);
+        });
+  }
 
+  Widget _buildWrap(int itemsPerColumn, double paddingBottom) {
     return ReorderableWrap(
       padding: EdgeInsets.only(bottom: paddingBottom),
       scrollAnimationDuration: const Duration(milliseconds: 400),

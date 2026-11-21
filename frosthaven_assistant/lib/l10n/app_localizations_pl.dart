@@ -418,6 +418,12 @@ class AppLocalizationsPl extends AppLocalizations {
   String get characterDecks => 'Talie postaci';
 
   @override
+  String get deckTabMonsters => 'Monsters';
+
+  @override
+  String get deckTabCharacters => 'Characters';
+
+  @override
   String get shuffleAndDraw => 'Tasuj\ni dobierz';
 
   @override

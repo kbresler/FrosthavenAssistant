@@ -167,6 +167,8 @@
   "addStandeeNr": "Add Standee Nr",
   "summonedLabel": "Summoned:",
   "characterDecks": "Character Decks",
+  "deckTabMonsters": "Monsters",
+  "deckTabCharacters": "Characters",
   "shuffleAndDraw": "Shuffle\n& Draw",
   "draw": "Draw",
   "nextRound": " Next\nRound",

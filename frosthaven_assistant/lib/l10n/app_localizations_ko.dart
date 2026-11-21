@@ -412,6 +412,12 @@ class AppLocalizationsKo extends AppLocalizations {
   String get characterDecks => '캐릭터 덱';
 
   @override
+  String get deckTabMonsters => 'Monsters';
+
+  @override
+  String get deckTabCharacters => 'Characters';
+
+  @override
   String get shuffleAndDraw => '섞기\n및 뽑기';
 
   @override

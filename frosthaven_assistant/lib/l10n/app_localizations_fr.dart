@@ -423,6 +423,12 @@ class AppLocalizationsFr extends AppLocalizations {
   String get characterDecks => 'Decks des personnages';
 
   @override
+  String get deckTabMonsters => 'Monsters';
+
+  @override
+  String get deckTabCharacters => 'Characters';
+
+  @override
   String get shuffleAndDraw => 'Mélanger\net piocher';
 
   @override
