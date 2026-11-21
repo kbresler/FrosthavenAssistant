@@ -105,6 +105,7 @@
   "settingsPerStandeeTurns": "Monster turns one standee at a time",
   "settingsAutoApplyWounds": "Apply wound damage at start of turn",
   "settingsStandeeChips": "Easy-read numbers when adding standees",
+  "settingsParchmentMenus": "Parchment menus and popups",
   "settingsGameStyleMessages": "Parchment message banner",
   "settingsTurnGlow": "Green glow on whose turn it is",
   "settingsNoStandees": "Don't track standees",

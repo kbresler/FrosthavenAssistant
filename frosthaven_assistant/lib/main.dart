@@ -168,15 +168,19 @@ class MyApp extends StatelessWidget {
       loading.value = false;
     }
 
-    return ValueListenableBuilder<String>(
-      valueListenable: getIt<Settings>().locale,
-      builder: (context, locale, _) => MaterialApp(
+    // Swerski: also rebuild when the parchment menus setting changes.
+    return ListenableBuilder(
+      listenable: Listenable.merge(
+          [getIt<Settings>().locale, getIt<Settings>().parchmentMenus]),
+      builder: (context, _) => MaterialApp(
         debugShowCheckedModeBanner: false,
         debugShowMaterialGrid: false,
         checkerboardOffscreenLayers: false,
         showPerformanceOverlay: false,
         title: title,
-        theme: ThemeSwitcher.of(context).themeData,
+        theme: getIt<Settings>().parchmentMenus.value
+            ? withParchmentMenus(ThemeSwitcher.of(context).themeData)
+            : ThemeSwitcher.of(context).themeData,
         localizationsDelegates: AppLocalizations.localizationsDelegates,
         supportedLocales: const [
           Locale('en'),
@@ -190,7 +194,7 @@ class MyApp extends StatelessWidget {
           Locale('zh', 'Hant'),
           Locale('th'),
         ],
-        locale: _parseLocale(locale),
+        locale: _parseLocale(getIt<Settings>().locale.value),
         builder: (context, child) {
           if (child == null) {
             return const SizedBox.shrink();

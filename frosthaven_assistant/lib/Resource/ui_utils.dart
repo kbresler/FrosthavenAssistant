@@ -1,6 +1,7 @@
 import 'dart:ui' show ImageFilter;
 
 import 'package:flutter/material.dart';
+import 'package:frosthaven_assistant/Layout/theme.dart';
 import 'package:frosthaven_assistant/Resource/app_constants.dart';
 import 'package:frosthaven_assistant/Resource/enums.dart';
 import 'package:frosthaven_assistant/Resource/settings.dart';
@@ -34,8 +35,15 @@ TextStyle getSmallTextStyle(double scale,
 }
 
 TextStyle getButtonTextStyle(double scale) {
-  return TextStyle(fontSize: kFontSizeSmall * scale, color: Colors.blue);
+  return TextStyle(
+      fontSize: kFontSizeSmall * scale,
+      // Swerski: dark-red accent on parchment menus.
+      color: useParchmentMenus() ? kSwerskiAccent : Colors.blue);
 }
+
+/// Swerski: parchment menus and popups (Settings.parchmentMenus).
+bool useParchmentMenus() =>
+    getIt.isRegistered<Settings>() && getIt<Settings>().parchmentMenus.value;
 
 TextStyle getCardTitleStyle(double fontSize, Shadow shadow, bool frosthavenStyle,
     {Color color = Colors.white, double? height}) {

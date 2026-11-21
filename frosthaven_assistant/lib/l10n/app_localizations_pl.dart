@@ -228,6 +228,9 @@ class AppLocalizationsPl extends AppLocalizations {
   String get settingsStandeeChips => 'Easy-read numbers when adding standees';
 
   @override
+  String get settingsParchmentMenus => 'Parchment menus and popups';
+
+  @override
   String get settingsGameStyleMessages => 'Parchment message banner';
 
   @override

@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:frosthaven_assistant/Resource/app_constants.dart';
+import 'package:frosthaven_assistant/Layout/theme.dart';
+import 'package:frosthaven_assistant/Resource/ui_utils.dart';
 import 'package:frosthaven_assistant/l10n/app_localizations.dart';
 
 class ScrollableMenuCard extends StatelessWidget {
@@ -26,6 +28,8 @@ class ScrollableMenuCard extends StatelessWidget {
           )
         : child;
     return Card(
+      // Swerski: brown edge on parchment menus.
+      shape: useParchmentMenus() ? kParchmentPanelShape : null,
       child: Scrollbar(
         controller: scrollController,
         child: SingleChildScrollView(

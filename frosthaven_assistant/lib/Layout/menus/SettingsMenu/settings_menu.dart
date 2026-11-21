@@ -127,6 +127,13 @@ class SettingsMenuState extends State<SettingsMenu> {
                   settings.turnGlow.value = v;
                   settings.saveToDisk();
                 }),
+            SettingsCheckbox(
+                title: l10n.settingsParchmentMenus,
+                notifier: settings.parchmentMenus,
+                onChanged: (v) {
+                  settings.parchmentMenus.value = v;
+                  settings.saveToDisk();
+                }),
 
             // ── Gameplay ────────────────────────────────────────────────
             SettingsHeading(l10n.settingsGroupGameplay),

@@ -515,6 +515,12 @@ abstract class AppLocalizations {
   /// **'Easy-read numbers when adding standees'**
   String get settingsStandeeChips;
 
+  /// No description provided for @settingsParchmentMenus.
+  ///
+  /// In en, this message translates to:
+  /// **'Parchment menus and popups'**
+  String get settingsParchmentMenus;
+
   /// No description provided for @settingsGameStyleMessages.
   ///
   /// In en, this message translates to:

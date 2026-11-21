@@ -99,7 +99,10 @@ void main() {
       expect(style.fontSize, 14.0);
     });
 
-    test('getButtonTextStyle returns blue TextStyle', () {
+    test('getButtonTextStyle returns blue TextStyle (parchment menus off)',
+        () {
+      getIt<Settings>().parchmentMenus.value = false;
+      addTearDown(() => getIt<Settings>().parchmentMenus.value = true);
       final style = getButtonTextStyle(1.0);
       expect(style.color, Colors.blue);
     });

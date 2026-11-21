@@ -40,6 +40,8 @@ class Settings {
   final gameStyleMessages = ValueNotifier<bool>(true);
   // Swerski: one green outline with a soft glow for whoever has the turn.
   final turnGlow = ValueNotifier<bool>(true);
+  // Swerski: parchment menus and popups with a dark-red accent.
+  final parchmentMenus = ValueNotifier<bool>(true);
   final hideLootDeck = ValueNotifier<bool>(false);
   final shimmer = ValueNotifier<bool>(
       (Platform.isWindows || Platform.isLinux || Platform.isMacOS));
@@ -298,6 +300,9 @@ class Settings {
       if (data["turnGlow"] != null) {
         turnGlow.value = data["turnGlow"];
       }
+      if (data["parchmentMenus"] != null) {
+        parchmentMenus.value = data["parchmentMenus"];
+      }
       if (data["lastKnownConnection"] != null) {
         lastKnownConnection = data["lastKnownConnection"];
       }
@@ -405,6 +410,7 @@ class Settings {
         '"standeeChips": ${standeeChips.value}, '
         '"gameStyleMessages": ${gameStyleMessages.value}, '
         '"turnGlow": ${turnGlow.value}, '
+        '"parchmentMenus": ${parchmentMenus.value}, '
         '"hideLootDeck": ${hideLootDeck.value}, '
         '"style": ${style.value.index}, '
         '"darkMode": ${darkMode.value}, '
