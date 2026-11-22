@@ -121,19 +121,24 @@ class StatusActions {
       _deckCards('curse', change, targets,
           gameState: gameState, settings: settings);
 
-  /// Whether [t] cannot get [condition] (immune): the same check the
+  /// Whether [t] cannot get [condition]: it is immune, or the condition is
+  /// hero-only (impair, infect) on a monster. The same check the
   /// single-standee menu's condition buttons use to disable themselves.
   static bool isImmune(FigureRef t, Condition condition,
-          {required GameState gameState, required Settings settings}) =>
-      !ConditionButtonViewModel(
-              condition: condition,
-              figureId: t.figureId,
-              ownerId: t.ownerId,
-              immunities:
-                  _immunities(t, gameState: gameState, settings: settings),
-              gameState: gameState,
-              settings: settings)
-          .enabled;
+      {required GameState gameState, required Settings settings}) {
+    if ((condition == Condition.impair || condition == Condition.infect) &&
+        _figure(t, gameState) is MonsterInstance) {
+      return true;
+    }
+    return !ConditionButtonViewModel(
+            condition: condition,
+            figureId: t.figureId,
+            ownerId: t.ownerId,
+            immunities: _immunities(t, gameState: gameState, settings: settings),
+            gameState: gameState,
+            settings: settings)
+        .enabled;
+  }
 
   /// Immune to curse: it can't have a curse card added to its deck (the rule
   /// book: immunity stops adding the card, not a card already in the deck).
@@ -142,10 +147,15 @@ class StatusActions {
       GameMethods.hasImmunity(
           _immunities(t, gameState: gameState, settings: settings), 'curse');
 
-  /// The modifier deck [t]'s cards go into: allies share the ally deck
-  /// outside OG Gloom, monsters share the monster deck.
+  /// The modifier deck [t]'s cards go into: a hero's own deck; allies share
+  /// the ally deck outside OG Gloom; monsters share the monster deck.
   static ModifierDeck? deckOf(FigureRef t,
       {required GameState gameState, required Settings settings}) {
+    // Resolve the figure before the monster view model: it casts the owner
+    // `as Monster` and would throw for a hero or a hero's summon.
+    final fig = _figure(t, gameState);
+    if (fig is CharacterState) return fig.modifierDeck;
+    if (_ownerMonster(t, gameState) == null) return null;
     final monster = _menu(t, gameState: gameState, settings: settings).monster;
     if (monster == null) return null;
     if (monster.isAlly &&
@@ -207,9 +217,25 @@ class StatusActions {
           settings: settings);
 
   // Rebuilt per call: monster immunities can change and tests mutate them.
+  // Only a standee owned by a monster has an immunity list: the view model
+  // casts the owner and would throw for a hero or a hero's summon.
   static List<String> _immunities(FigureRef t,
-          {required GameState gameState, required Settings settings}) =>
-      _menu(t, gameState: gameState, settings: settings).immunities;
+      {required GameState gameState, required Settings settings}) {
+    final fig = _figure(t, gameState);
+    if (fig is! MonsterInstance || _ownerMonster(t, gameState) == null) {
+      return const [];
+    }
+    return _menu(t, gameState: gameState, settings: settings).immunities;
+  }
+
+  // The owner only when it is a monster on the board; a hero's or an ally's
+  // summon is owned by a Character.
+  static Monster? _ownerMonster(FigureRef t, GameState gameState) {
+    for (final item in gameState.currentList) {
+      if (item.id == t.ownerId) return item is Monster ? item : null;
+    }
+    return null;
+  }
 
   static String _signed(int n) => n > 0 ? '+$n' : '−${-n}';
 }

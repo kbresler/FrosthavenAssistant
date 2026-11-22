@@ -102,23 +102,29 @@ class StatusMenuState extends State<StatusMenu> {
     );
   }
 
-  /// Swerski: starts attack mode with this standee already picked. Only for
-  /// monster standees, never summons or characters.
+  /// Swerski: starts attack mode with this figure already picked. Monster
+  /// standees and heroes, never summons.
   Widget _buildAttackSeveralButton(
       BuildContext context, StatusMenuViewModel vm, double scale) {
     final fig = vm.figure;
-    if (!_settings.attackSeveral.value ||
-        !vm.isMonster ||
-        vm.isCharacter ||
-        fig is! MonsterInstance) {
+    final on = _settings.attackSeveral.value;
+    final VoidCallback start;
+    if (on && vm.isMonster && !vm.isCharacter && fig is MonsterInstance) {
+      start = () {
+        Navigator.of(context).pop();
+        attackModeController().startSelecting(first: fig, ownerId: vm.ownerId);
+      };
+    } else if (on && vm.isCharacter && !vm.isSummon && fig is CharacterState) {
+      start = () {
+        Navigator.of(context).pop();
+        attackModeController().startSelecting(firstHero: vm.characterId);
+      };
+    } else {
       return const SizedBox.shrink();
     }
     final l10n = AppLocalizations.of(context)!;
     return TextButton.icon(
-      onPressed: () {
-        Navigator.of(context).pop();
-        attackModeController().startSelecting(first: fig, ownerId: vm.ownerId);
-      },
+      onPressed: start,
       icon: Image.asset('assets/images/abilities/attack_black.png',
           height: 18 * scale),
       label: Text(l10n.attackSeveralMenu, style: getButtonTextStyle(scale)),

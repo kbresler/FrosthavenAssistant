@@ -9,6 +9,7 @@ import 'package:frosthaven_assistant/Layout/attack_mode/attack_mode_controller.d
 import 'package:frosthaven_assistant/Layout/attack_mode/attack_mode_panel.dart';
 import 'package:frosthaven_assistant/Layout/menus/StatusMenu/status_menu.dart';
 import 'package:frosthaven_assistant/Layout/top_bar.dart';
+import 'package:frosthaven_assistant/Resource/commands/add_character_command.dart';
 import 'package:frosthaven_assistant/Resource/commands/add_monster_command.dart';
 import 'package:frosthaven_assistant/Resource/commands/add_standee_command.dart';
 import 'package:frosthaven_assistant/Resource/commands/draw_command.dart';
@@ -674,6 +675,191 @@ void main() {
       await tester.pump();
       expect(global.isPicked(_monsterName, standee(1).getId()), isTrue);
       expect(find.byType(StatusMenu), findsNothing);
+    });
+  });
+
+  group('Swerski attack mode: heroes', () {
+    late String heroId;
+
+    setUp(() {
+      gs.action(AddCharacterCommand('Blinkblade', 'Frosthaven', null, 1));
+      heroId = gs.currentList.whereType<Character>().first.id;
+    });
+
+    // Looked up fresh: commands and Undo rebuild the game objects.
+    Character hero() => gs.currentList.whereType<Character>().first;
+    AttackTarget heroTarget() => AttackTarget.ofHero(heroId);
+
+    void pickHeroAndAttack(List<int> standees) {
+      attack.startSelecting();
+      attack.togglePickCharacter(heroId);
+      for (final n in standees) {
+        attack.togglePick(standee(n), _monsterName);
+      }
+      attack.startAttack();
+    }
+
+    Future<void> pumpPanel(WidgetTester tester) async {
+      final originalOnError = FlutterError.onError;
+      FlutterError.onError = ignoreOverflowErrors;
+      await tester.pumpWidget(
+          testApp(Scaffold(body: AttackModePanel(controller: attack))));
+      await tester.pump();
+      FlutterError.onError = originalOnError;
+    }
+
+    test('a hero card picks the hero, and again lets it go', () {
+      attack.startSelecting();
+      attack.togglePickCharacter(heroId);
+      expect(attack.isPicked(heroId, heroId), isTrue);
+      attack.togglePickCharacter(heroId);
+      expect(attack.picked.value, isEmpty);
+    });
+
+    test('starting from a hero menu pre-picks the hero', () {
+      attack.startSelecting(firstHero: heroId);
+      expect(attack.picked.value.single.hero, isTrue);
+      expect(attack.picked.value.single.ownerId, heroId);
+    });
+
+    test('health on a hero and a standee is one undo', () {
+      pickHeroAndAttack([1]);
+      final beforeHero = hero().characterState.health.value;
+      final beforeStandee = standee(1).health.value;
+
+      attack.changeHealth(-1);
+      expect(hero().characterState.health.value, beforeHero - 1);
+      expect(standee(1).health.value, beforeStandee - 1);
+      expect(attack.undoLabel, '−1 health (2)');
+
+      gs.undo();
+      expect(hero().characterState.health.value, beforeHero);
+      expect(standee(1).health.value, beforeStandee);
+    });
+
+    test('a killed hero goes to zero and stays on the board', () {
+      pickHeroAndAttack([]);
+      expect(attack.hasHero, isTrue);
+      final max = hero().characterState.maxHealth.value;
+
+      attack.kill();
+      expect(attack.undoLabel, 'Kill (1)');
+      expect(hero().characterState.health.value, 0);
+      expect(gs.currentList.any((e) => e.id == heroId), isTrue);
+      expect(attack.isDead(heroTarget()), isTrue);
+      expect(attack.deadCount, 1);
+      expect(attack.liveActive, isEmpty);
+
+      gs.undo();
+      expect(hero().characterState.health.value, max);
+    });
+
+    test('impair counts the hero only and lands on the hero only', () {
+      pickHeroAndAttack([1]);
+      expect(attack.tallyCounts(Condition.impair), (count: 0, of: 1));
+      expect(attack.isImmune(heroTarget(), Condition.impair), isFalse);
+
+      attack.toggleCondition(Condition.impair);
+      expect(
+          hero().characterState.conditions.value, contains(Condition.impair));
+      expect(standee(1).conditions.value, isEmpty);
+      expect(attack.undoLabel, '+impair (1)');
+    });
+
+    test('a mixed roster answers every immunity query without throwing', () {
+      pickHeroAndAttack([1, 2]);
+      expect(attack.isImmuneToCurse(heroTarget()), isFalse);
+      expect(attack.tally(Condition.stun), ConditionTally.none);
+      attack.toggleCondition(Condition.stun);
+      expect(attack.tally(Condition.stun), ConditionTally.all);
+      expect(hero().characterState.conditions.value, contains(Condition.stun));
+      expect(standee(1).conditions.value, contains(Condition.stun));
+    });
+
+    test('a hero-only pick works the hero\'s own deck for bless', () {
+      pickHeroAndAttack([]);
+      // blessCurseLeft walks every deck: make sure the counters exist
+      gs.modifierDeckAllies.getRemovable('bless');
+      final deck = hero().characterState.modifierDeck;
+      expect(attack.monsterDeck, same(deck));
+      final before = deck.getRemovable('bless').value;
+
+      attack.changeBless(1);
+      expect(deck.getRemovable('bless').value, before + 1);
+      expect(attack.undoLabel, '+1 bless');
+    });
+
+    test('Draw and Undo bring a mixed attack back as it was', () {
+      pickHeroAndAttack([1, 2]);
+      attack.only(heroTarget());
+      gs.action(DrawCommand(gameState: gs));
+      expect(attack.phase.value, AttackPhase.off);
+
+      gs.undo();
+      expect(attack.isAttacking, isTrue);
+      expect(attack.roster.value.length, 3);
+      expect(attack.liveActive.single.ownerId, heroId);
+    });
+
+    testWidgets('the panel counts a hero and shows its chip', (tester) async {
+      pickHeroAndAttack([1]);
+      await pumpPanel(tester);
+      expect(find.text('Attacking 2 of 2'), findsOneWidget);
+      expect(find.byKey(ValueKey('attack-health-$heroId-0')), findsOneWidget);
+      expect(find.byKey(ValueKey('attack-health-$_monsterName-1')),
+          findsOneWidget);
+    });
+
+    testWidgets('a killed hero chip shows the skull', (tester) async {
+      pickHeroAndAttack([]);
+      await pumpPanel(tester);
+      attack.kill();
+      // a kill schedules a short refresh: let it run inside the test
+      await tester.pump(const Duration(seconds: 1));
+      expect(find.byKey(ValueKey('attack-dead-$heroId-0')), findsOneWidget);
+      expect(find.byKey(ValueKey('attack-health-$heroId-0')), findsNothing);
+      attack.end();
+      gs.undo();
+    });
+
+    testWidgets('the impair tile comes with a hero and hits heroes only',
+        (tester) async {
+      pickAndAttack([1]);
+      await pumpPanel(tester);
+      expect(
+          find.byKey(const ValueKey('attack-condition-impair')), findsNothing);
+      attack.end();
+
+      pickHeroAndAttack([1]);
+      await pumpPanel(tester);
+      final tile = find.byKey(const ValueKey('attack-condition-impair'));
+      expect(tile, findsOneWidget);
+      await tester.tap(tile);
+      await tester.pump();
+      expect(
+          hero().characterState.conditions.value, contains(Condition.impair));
+      expect(standee(1).conditions.value, isEmpty);
+      attack.end();
+      gs.undo();
+    });
+
+    testWidgets('infect joins only with custom content shown', (tester) async {
+      final custom = getIt<Settings>().showCustomContent;
+      final prev = custom.value;
+      custom.value = false;
+      addTearDown(() => custom.value = prev);
+      pickHeroAndAttack([]);
+      await pumpPanel(tester);
+      expect(
+          find.byKey(const ValueKey('attack-condition-impair')), findsOneWidget);
+      expect(
+          find.byKey(const ValueKey('attack-condition-infect')), findsNothing);
+      // the panel reads this gate when it builds, as in the character menu
+      custom.value = true;
+      await pumpPanel(tester);
+      expect(
+          find.byKey(const ValueKey('attack-condition-infect')), findsOneWidget);
+      attack.end();
     });
   });
 }

@@ -9,6 +9,8 @@ import '../../Resource/settings.dart';
 import '../../Resource/state/game_state.dart';
 import '../../Resource/ui_utils.dart';
 import '../MonsterBox/monster_box.dart';
+import '../attack_mode/attack_mode_controller.dart';
+import '../attack_mode/attack_pick_outline.dart';
 import '../health_wheel_controller.dart';
 import '../view_models/character_view_model.dart';
 import 'character_widget_internal.dart';
@@ -111,7 +113,15 @@ class CharacterWidgetState extends State<CharacterWidget> {
         gameState: widget.gameState, settings: widget.settings);
 
     return InkWell(
-        onTap: () => vm.openStatusMenu(context),
+        onTap: () {
+          // Swerski: while attack mode is picking, the card picks the hero.
+          final attack = attackModeController();
+          if (attack.isSelecting) {
+            attack.togglePickCharacter(character.id);
+          } else {
+            vm.openStatusMenu(context);
+          }
+        },
         child: ListenableBuilder(
             listenable: vm.updateList,
             builder: (context, child) {
@@ -168,8 +178,13 @@ class CharacterWidgetState extends State<CharacterWidget> {
                         return buildMonsterBoxGrid(scale, character);
                       }),
                 ),
-                grayScaleIf(
-                    grayedOut: !vm.notGrayScale, child: characterContent)
+                // Swerski: the pick outline hugs the hero card, not the
+                // summons row above it.
+                AttackPickOutline(
+                    ownerId: character.id,
+                    figureId: character.id,
+                    child: grayScaleIf(
+                        grayedOut: !vm.notGrayScale, child: characterContent))
               ]);
             }));
   }

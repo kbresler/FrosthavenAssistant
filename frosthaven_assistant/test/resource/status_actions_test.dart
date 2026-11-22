@@ -1,6 +1,7 @@
 // ignore_for_file: no-magic-number, avoid-late-keyword
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:frosthaven_assistant/Resource/commands/add_character_command.dart';
 import 'package:frosthaven_assistant/Resource/commands/add_monster_command.dart';
 import 'package:frosthaven_assistant/Resource/commands/add_standee_command.dart';
 import 'package:frosthaven_assistant/Resource/commands/group_command.dart';
@@ -60,6 +61,7 @@ void main() {
           false,
           gameState: gs));
     }
+    gs.action(AddCharacterCommand('Blinkblade', 'Frosthaven', null, 1));
     startIndex = gs.commandIndex.value;
   });
 
@@ -313,6 +315,148 @@ void main() {
           StatusActions.deckOf((ownerId: ally.id, figureId: 'any'),
               gameState: gs, settings: settings),
           same(expected));
+    });
+  });
+
+  group('heroes', () {
+    Character hero() => gs.currentList.whereType<Character>().first;
+    FigureRef heroRef() => (ownerId: hero().id, figureId: hero().id);
+    ModifierDeck heroDeck() => hero().characterState.modifierDeck;
+
+    setUp(() {
+      // blessCurseLeft walks every deck: make sure the counters exist.
+      for (final d in [heroDeck(), gs.modifierDeckAllies]) {
+        d.getRemovable('bless');
+        d.getRemovable('curse');
+      }
+    });
+
+    test("a hero's cards go into their own deck", () {
+      expect(
+          StatusActions.deckOf(heroRef(), gameState: gs, settings: settings),
+          same(heroDeck()));
+    });
+
+    test('immunity checks on a hero answer without throwing', () {
+      expect(
+          StatusActions.isImmune(heroRef(), Condition.stun,
+              gameState: gs, settings: settings),
+          isFalse);
+      expect(
+          StatusActions.isImmuneToCurse(heroRef(),
+              gameState: gs, settings: settings),
+          isFalse);
+    });
+
+    test("a hero's summon answers too: no immunities, no deck", () {
+      gs.action(AddStandeeCommand(
+          1,
+          SummonData(1, 'Test Summon', 10, 2, 2, 0, 'test_gfx'),
+          hero().id,
+          MonsterType.summon,
+          true,
+          gameState: gs));
+      final summon = (
+        ownerId: hero().id,
+        figureId: hero().characterState.summonList.first.getId()
+      );
+      expect(
+          StatusActions.isImmune(summon, Condition.stun,
+              gameState: gs, settings: settings),
+          isFalse);
+      expect(
+          StatusActions.isImmuneToCurse(summon,
+              gameState: gs, settings: settings),
+          isFalse);
+      // summon picking is not wired; the module just stays safe on them
+      expect(
+          StatusActions.deckOf(summon, gameState: gs, settings: settings),
+          isNull);
+    });
+
+    test('impair and infect are hero-only: monsters are immune', () {
+      for (final c in [Condition.impair, Condition.infect]) {
+        expect(
+            StatusActions.isImmune(heroRef(), c,
+                gameState: gs, settings: settings),
+            isFalse);
+        expect(
+            StatusActions.isImmune(ref(1), c,
+                gameState: gs, settings: settings),
+            isTrue);
+      }
+      expect(
+          StatusActions.buildAddCondition(refs([1, 2]), Condition.impair,
+              gameState: gs, settings: settings),
+          isNull);
+    });
+
+    test('impair over a mixed roster commands the hero only', () {
+      final c = StatusActions.buildAddCondition([heroRef(), ...refs([1, 2])],
+          Condition.impair,
+          gameState: gs,
+          settings: settings)!;
+      expect(c, isA<LabeledCommand>());
+      expect(c.describe(), '+impair (1)');
+      gs.action(c);
+      expect(
+          hero().characterState.conditions.value, contains(Condition.impair));
+      expect(standee(1).conditions.value, isEmpty);
+    });
+
+    test('health, chill and kill work on a hero like on a standee', () {
+      final before = hero().characterState.health.value;
+      final c = StatusActions.buildHealthChange([heroRef(), ref(1)], -1,
+          gameState: gs)!;
+      expect(c, isA<GroupCommand>());
+      expect(c.describe(), '−1 health (2)');
+      gs.action(c);
+      expect(hero().characterState.health.value, before - 1);
+
+      gs.action(StatusActions.buildChillChange([heroRef()], 1, gameState: gs)!);
+      expect(hero().characterState.chill.value, 1);
+
+      gs.action(StatusActions.buildKill([heroRef()], gameState: gs)!);
+      expect(undoLabel(), 'Kill (1)');
+      // the existing death flow: the hero stays on the board at zero
+      expect(hero().characterState.health.value, 0);
+      expect(gs.currentList.any((e) => e.id == heroRef().ownerId), isTrue);
+      gs.undo();
+      expect(hero().characterState.health.value, before - 1);
+    });
+
+    test(
+        'curse follows the pools: a full monster deck does not stop the hero',
+        () {
+      while (GameMethods.blessCurseLeft('curse', gs.modifierDeck,
+              gameState: gs) >
+          0) {
+        gs.action(StatusActions.buildCurseChange(refs([1]), 1,
+            gameState: gs, settings: settings)!);
+      }
+      final c = StatusActions.buildCurseChange([heroRef(), ref(1)], 1,
+          gameState: gs, settings: settings)!;
+      expect(c, isA<LabeledCommand>()); // the standee's pool is full
+      expect(c.describe(), '+1 curse');
+      gs.action(c);
+      expect(heroDeck().getRemovable('curse').value, 1);
+      expect(gs.modifierDeck.getRemovable('curse').value, 10);
+    });
+
+    test('bless counts against the shared ten, whatever the deck', () {
+      while (GameMethods.blessCurseLeft('bless', gs.modifierDeck,
+              gameState: gs) >
+          1) {
+        gs.action(StatusActions.buildBlessChange(refs([1]), 1,
+            gameState: gs, settings: settings)!);
+      }
+      final c = StatusActions.buildBlessChange([heroRef(), ref(1)], 1,
+          gameState: gs, settings: settings)!;
+      expect(c, isA<LabeledCommand>()); // one card left: the hero takes it
+      expect(c.describe(), '+1 bless');
+      gs.action(c);
+      expect(heroDeck().getRemovable('bless').value, 1);
+      expect(gs.modifierDeck.getRemovable('bless').value, 9);
     });
   });
 }

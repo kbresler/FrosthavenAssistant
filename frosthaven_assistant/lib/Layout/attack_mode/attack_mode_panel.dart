@@ -233,13 +233,31 @@ class AttackModePanel extends StatelessWidget {
 
   // ── Left: the standees being attacked ─────────────────────────────────────
 
-  String _monsterName(GameState gs, String ownerId) {
+  /// Display name of a roster group: a hero's name as the card shows it (an
+  /// objective or escort keeps its own name) or the monster type. Also the
+  /// label on a hero's chip (heroes have no standee number).
+  String _groupName(GameState gs, AttackTarget t) {
     for (final item in gs.currentList) {
-      if (item is Monster && item.id == ownerId) {
+      if (item.id != t.ownerId) continue;
+      if (item is Character) {
+        return getIt<TranslationService>().t(item.characterState.display.value);
+      }
+      if (item is Monster) {
         return getIt<TranslationService>().t(item.type.display);
       }
     }
-    return ownerId;
+    return t.ownerId;
+  }
+
+  String _portraitPath(GameState gs, AttackTarget t) {
+    if (t.hero) {
+      for (final item in gs.currentList) {
+        if (item is Character && item.id == t.ownerId) {
+          return 'assets/images/class-icons/${item.characterClass.name}.png';
+        }
+      }
+    }
+    return 'assets/images/monsters/${t.gfx}.png';
   }
 
   Widget _monsters(BuildContext context, AttackModeController attack,
@@ -265,13 +283,13 @@ class AttackModePanel extends StatelessWidget {
                   child: ClipOval(
                       child: Image(
                           fit: BoxFit.cover,
-                          image: AssetImage(
-                              'assets/images/monsters/${entry.value.first.gfx}.png'))),
+                          image:
+                              AssetImage(_portraitPath(gs, entry.value.first)))),
                 ),
               ),
               SizedBox(width: 8 * s),
               Expanded(
-                child: Text(_monsterName(gs, entry.key),
+                child: Text(_groupName(gs, entry.value.first),
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                     style: TextStyle(
@@ -282,7 +300,7 @@ class AttackModePanel extends StatelessWidget {
             Wrap(
               spacing: 7 * s,
               runSpacing: 9 * s,
-              children: [for (final t in entry.value) _chip(attack, t, s)],
+              children: [for (final t in entry.value) _chip(attack, gs, t, s)],
             ),
           ]),
         ),
@@ -301,12 +319,14 @@ class AttackModePanel extends StatelessWidget {
     ]);
   }
 
-  Widget _chip(AttackModeController attack, AttackTarget t, double s) {
+  Widget _chip(
+      AttackModeController attack, GameState gs, AttackTarget t, double s) {
     final on = attack.active.value.contains(t);
     final dead = attack.isDead(t);
     final fig = attack.figureOf(t);
-    final elite = t.type == MonsterType.elite;
-    final boss = t.type == MonsterType.boss;
+    final label = t.hero ? _groupName(gs, t) : '${t.standeeNr}';
+    final elite = !t.hero && t.type == MonsterType.elite;
+    final boss = !t.hero && t.type == MonsterType.boss;
     final fill = dead
         ? _kDeadFill
         : elite
@@ -356,20 +376,29 @@ class AttackModePanel extends StatelessWidget {
                         Positioned(
                             top: -2 * s,
                             left: -4 * s,
-                            child: Text('${t.standeeNr}',
-                                style: TextStyle(
-                                    fontSize: 15 * s,
-                                    fontWeight: FontWeight.w700,
-                                    height: 1.1,
-                                    color: _kDeadRed))),
+                            child: ConstrainedBox(
+                                constraints: BoxConstraints(maxWidth: 60 * s),
+                                child: Text(label,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: TextStyle(
+                                        fontSize: (t.hero ? 11 : 15) * s,
+                                        fontWeight: FontWeight.w700,
+                                        height: 1.1,
+                                        color: _kDeadRed)))),
                       ])
                 : Column(mainAxisSize: MainAxisSize.min, children: [
-                    Text('${t.standeeNr}',
-                        style: TextStyle(
-                            fontSize: 21 * s,
-                            fontWeight: FontWeight.w700,
-                            height: 1.05,
-                            color: _kInk)),
+                    ConstrainedBox(
+                        constraints: BoxConstraints(maxWidth: 110 * s),
+                        child: Text(label,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                                fontSize: t.hero ? 15 * s : 21 * s,
+                                fontWeight: FontWeight.w700,
+                                height: 1.05,
+                                color: _kInk))),
                     if (hp != null)
                       Text(hp,
                           key: ValueKey(
@@ -416,6 +445,10 @@ class AttackModePanel extends StatelessWidget {
       Condition.bane,
       Condition.brittle,
       if (custom) Condition.rupture,
+      // Hero-only conditions, shown when a hero is in the roster. Monsters
+      // are "immune" to them (StatusActions.isImmune), so they skip them.
+      if (attack.hasHero) Condition.impair,
+      if (attack.hasHero && custom) Condition.infect,
     ];
     final helpful = <Condition>[
       Condition.strengthen,

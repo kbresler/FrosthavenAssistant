@@ -12,15 +12,17 @@ enum AttackPhase { off, selecting, attacking }
 /// How many of a condition the switched-on standees carry.
 enum ConditionTally { none, some, all }
 
-/// One standee that can be attacked. Remembers what it looked like when it was
-/// picked, so a standee that dies (and leaves the board) still has a chip.
+/// One figure that can be attacked: a monster standee or a hero. Remembers
+/// what it looked like when it was picked, so a standee that dies (and leaves
+/// the board) still has a chip.
 class AttackTarget {
   const AttackTarget(
       {required this.ownerId,
       required this.figureId,
       required this.standeeNr,
       required this.type,
-      required this.gfx});
+      required this.gfx,
+      this.hero = false});
 
   factory AttackTarget.of(MonsterInstance instance, String ownerId) =>
       AttackTarget(
@@ -30,11 +32,24 @@ class AttackTarget {
           type: instance.type,
           gfx: instance.gfx);
 
+  /// A hero character. Standee number, type and gfx are placeholders: the
+  /// panel shows the hero's name and class icon instead.
+  factory AttackTarget.ofHero(String characterId) => AttackTarget(
+      ownerId: characterId,
+      figureId: characterId,
+      standeeNr: 0,
+      type: MonsterType.normal,
+      gfx: '',
+      hero: true);
+
   final String ownerId;
   final String figureId;
   final int standeeNr;
   final MonsterType type;
   final String gfx;
+
+  /// Whether this target is a hero character rather than a standee.
+  final bool hero;
 
   @override
   bool operator ==(Object other) =>
@@ -46,8 +61,8 @@ class AttackTarget {
   int get hashCode => Object.hash(ownerId, figureId);
 }
 
-/// Swerski attack mode: pick several monster standees, then change health and
-/// conditions on all the switched-on ones at once.
+/// Swerski attack mode: pick several standees and heroes, then change health
+/// and conditions on all the switched-on ones at once.
 ///
 /// Selection is local to this device. Every change is one ordinary action
 /// built by [StatusActions], so Undo and network sync work as usual.
@@ -140,15 +155,31 @@ class AttackModeController {
   bool isPicked(String ownerId, String figureId) => picked.value
       .any((t) => t.ownerId == ownerId && t.figureId == figureId);
 
-  void startSelecting({MonsterInstance? first, String? ownerId}) {
+  /// Starts picking. [first] with [ownerId] seeds it with one standee,
+  /// [firstHero] (a character id) with one hero.
+  void startSelecting(
+      {MonsterInstance? first, String? ownerId, String? firstHero}) {
     _forgetResume();
-    picked.value =
-        (first != null && ownerId != null) ? [AttackTarget.of(first, ownerId)] : [];
+    if (firstHero != null) {
+      picked.value = [AttackTarget.ofHero(firstHero)];
+    } else {
+      picked.value = (first != null && ownerId != null)
+          ? [AttackTarget.of(first, ownerId)]
+          : [];
+    }
     phase.value = AttackPhase.selecting;
   }
 
   void togglePick(MonsterInstance instance, String ownerId) {
     final target = AttackTarget.of(instance, ownerId);
+    final list = List<AttackTarget>.of(picked.value);
+    if (!list.remove(target)) list.add(target);
+    picked.value = list;
+  }
+
+  /// Picks or unpicks a hero character.
+  void togglePickCharacter(String characterId) {
+    final target = AttackTarget.ofHero(characterId);
     final list = List<AttackTarget>.of(picked.value);
     if (!list.remove(target)) list.add(target);
     picked.value = list;
@@ -276,6 +307,9 @@ class AttackModeController {
 
   /// How many of the roster are dead.
   int get deadCount => roster.value.where(isDead).length;
+
+  /// Whether the roster includes a hero.
+  bool get hasHero => roster.value.any((t) => t.hero);
 
   /// Chill on the switched-on standees, added up.
   int get chillTotal =>
