@@ -236,9 +236,7 @@ class AttackModeController {
   FigureRef _ref(AttackTarget t) => (ownerId: t.ownerId, figureId: t.figureId);
 
   /// The switched-on standees still on the board, as plain figure refs.
-  List<FigureRef> _refs() => liveActive
-      .map((t) => (ownerId: t.ownerId, figureId: t.figureId))
-      .toList();
+  List<FigureRef> _refs() => liveActive.map(_ref).toList();
 
   void _run(Command? command) {
     if (command != null) _gameState.action(command);
