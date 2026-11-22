@@ -1,18 +1,11 @@
 import 'package:flutter/foundation.dart';
 
-import '../../Resource/commands/add_condition_command.dart';
-import '../../Resource/commands/change_stat_commands/change_bless_command.dart';
-import '../../Resource/commands/change_stat_commands/change_curse_command.dart';
-import '../../Resource/commands/change_stat_commands/change_health_command.dart';
-import '../../Resource/commands/group_command.dart';
-import '../../Resource/commands/remove_condition_command.dart';
 import '../../Resource/enums.dart';
 import '../../Resource/game_methods.dart';
 import '../../Resource/settings.dart';
 import '../../Resource/state/game_state.dart';
+import '../../Resource/status_actions.dart';
 import '../../services/service_locator.dart';
-import '../view_models/condition_button_view_model.dart';
-import '../view_models/status_menu_view_model.dart';
 
 enum AttackPhase { off, selecting, attacking }
 
@@ -57,10 +50,8 @@ class AttackTarget {
 /// conditions on all the switched-on ones at once.
 ///
 /// Selection is local to this device. Every change is one ordinary action
-/// (a [GroupCommand]), so Undo and network sync work as usual.
+/// built by [StatusActions], so Undo and network sync work as usual.
 class AttackModeController {
-  static const int _kMaxChill = 12;
-
   AttackModeController({GameState? gameState, Settings? settings})
       : _gameState = gameState ?? getIt<GameState>(),
         _settings = settings ?? getIt<Settings>() {
@@ -242,57 +233,32 @@ class AttackModeController {
 
   // ── Applying ──────────────────────────────────────────────────────────────
 
-  static String _signed(int n) => n > 0 ? '+$n' : '−${-n}';
+  FigureRef _ref(AttackTarget t) => (ownerId: t.ownerId, figureId: t.figureId);
 
-  void changeHealth(int change) {
-    final commands = <ChangeHealthCommand>[];
-    for (final t in liveActive) {
-      final fig = figureOf(t);
-      if (fig == null) continue;
-      if (change > 0 && fig.health.value >= fig.maxHealth.value) continue;
-      commands.add(ChangeHealthCommand(change, t.figureId, t.ownerId,
-          gameState: _gameState));
-    }
-    if (commands.isEmpty) return;
-    _gameState.action(
-        GroupCommand(commands, '${_signed(change)} health (${commands.length})'));
+  /// The switched-on standees still on the board, as plain figure refs.
+  List<FigureRef> _refs() => liveActive
+      .map((t) => (ownerId: t.ownerId, figureId: t.figureId))
+      .toList();
+
+  void _run(Command? command) {
+    if (command != null) _gameState.action(command);
   }
 
-  void kill() {
-    final commands = <ChangeHealthCommand>[];
-    for (final t in liveActive) {
-      final fig = figureOf(t);
-      if (fig == null) continue;
-      commands.add(ChangeHealthCommand(-fig.health.value, t.figureId, t.ownerId,
-          gameState: _gameState));
-    }
-    if (commands.isEmpty) return;
-    _gameState.action(GroupCommand(commands, 'Kill (${commands.length})'));
-  }
+  void changeHealth(int change) => _run(
+      StatusActions.buildHealthChange(_refs(), change, gameState: _gameState));
 
-  List<String> _immunities(AttackTarget t) =>
-      StatusMenuViewModel(
-              figureId: t.figureId,
-              monsterId: t.ownerId,
-              gameState: _gameState,
-              settings: _settings)
-          .immunities;
+  void kill() => _run(StatusActions.buildKill(_refs(), gameState: _gameState));
 
   /// Immune to curse: it can't have a curse card added to its deck (the rule
   /// book: immunity stops adding the card, not a card already in the deck).
-  bool isImmuneToCurse(AttackTarget t) =>
-      GameMethods.hasImmunity(_immunities(t), 'curse');
+  bool isImmuneToCurse(AttackTarget t) => StatusActions.isImmuneToCurse(_ref(t),
+      gameState: _gameState, settings: _settings);
 
   /// Whether this standee cannot get [condition] (immune): the same check the
   /// single-standee menu's condition buttons use to disable themselves.
-  bool isImmune(AttackTarget t, Condition condition) => !ConditionButtonViewModel(
-          condition: condition,
-          figureId: t.figureId,
-          ownerId: t.ownerId,
-          immunities: _immunities(t),
-          gameState: _gameState,
-          settings: _settings)
-      .enabled;
+  bool isImmune(AttackTarget t, Condition condition) => StatusActions.isImmune(
+      _ref(t), condition,
+      gameState: _gameState, settings: _settings);
 
   /// How many of the switched-on standees (that can get it) carry [condition].
   ({int count, int of}) tallyCounts(Condition condition) {
@@ -320,46 +286,18 @@ class AttackModeController {
   /// Gives the condition to those who lack it; takes it from everyone when
   /// they all have it already.
   void toggleCondition(Condition condition) {
-    final targets = liveActive.where((t) => !isImmune(t, condition)).toList();
-    if (targets.isEmpty) return;
     final allHave = tally(condition) == ConditionTally.all;
-    final commands = <Command>[];
-    for (final t in targets) {
-      final has = figureOf(t)?.conditions.value.contains(condition) ?? false;
-      if (allHave) {
-        commands.add(RemoveConditionCommand(condition, t.figureId, t.ownerId,
-            gameState: _gameState));
-      } else if (!has) {
-        commands.add(AddConditionCommand(condition, t.figureId, t.ownerId,
-            gameState: _gameState));
-      }
-    }
-    if (commands.isEmpty) return;
-    _gameState.action(GroupCommand(commands,
-        '${allHave ? '−' : '+'}${condition.getName()} (${commands.length})'));
+    _run(allHave
+        ? StatusActions.buildRemoveCondition(_refs(), condition,
+            gameState: _gameState, settings: _settings)
+        : StatusActions.buildAddCondition(_refs(), condition,
+            gameState: _gameState, settings: _settings));
   }
 
   /// Chill stacks: one more (or one less) on every switched-on standee.
-  void changeChill(int change) {
-    final commands = <Command>[];
-    for (final t in liveActive) {
-      final fig = figureOf(t);
-      if (fig == null) continue;
-      if (change > 0) {
-        // Same limit as the single-standee menu.
-        if (fig.chill.value >= _kMaxChill) continue;
-        commands.add(AddConditionCommand(Condition.chill, t.figureId, t.ownerId,
-            gameState: _gameState));
-      } else if (fig.chill.value > 0) {
-        commands.add(RemoveConditionCommand(
-            Condition.chill, t.figureId, t.ownerId,
-            gameState: _gameState));
-      }
-    }
-    if (commands.isEmpty) return;
-    _gameState.action(GroupCommand(
-        commands, '${_signed(change)} chill (${commands.length})'));
-  }
+  void changeChill(int change) => _run(StatusActions.buildChillChange(_refs(),
+      change,
+      gameState: _gameState));
 
   // ── Bless and curse live in the monsters' shared modifier deck ───────────
 
@@ -369,63 +307,17 @@ class AttackModeController {
     final live = liveActive;
     final targets = live.isNotEmpty ? live : roster.value;
     if (targets.isEmpty) return null;
-    final monster = StatusMenuViewModel(
-            figureId: targets.first.figureId,
-            monsterId: targets.first.ownerId,
-            gameState: _gameState,
-            settings: _settings)
-        .monster;
-    return monster == null ? null : _deckOf(monster);
+    return StatusActions.deckOf(_ref(targets.first),
+        gameState: _gameState, settings: _settings);
   }
 
-  ModifierDeck _deckOf(Monster monster) {
-    if (monster.isAlly &&
-        (_gameState.allyDeckInOGGloom.value || !GameMethods.isOgGloomEdition())) {
-      return _gameState.modifierDeckAllies;
-    }
-    return _gameState.modifierDeck;
-  }
+  void changeBless(int change) => _run(StatusActions.buildBlessChange(_refs(),
+      change,
+      gameState: _gameState, settings: _settings));
 
-  /// The same thing the single-standee menu does for each standee: one bless
-  /// (or curse) card into that standee's modifier deck, under the same limits
-  /// ([GameMethods.blessCurseLeft], never below none). Run for every
-  /// switched-on standee, as one action.
-  void _changeDeckCards(String id, int change) {
-    final commands = <Command>[];
-    final pending = <ModifierDeck, int>{}; // cards added so far, per deck
-    for (final t in liveActive) {
-      final monster = StatusMenuViewModel(
-              figureId: t.figureId,
-              monsterId: t.ownerId,
-              gameState: _gameState,
-              settings: _settings)
-          .monster;
-      if (monster == null) continue;
-      if (id == 'curse' && change > 0 && isImmuneToCurse(t)) continue;
-      final deck = _deckOf(monster);
-      final inDeck = deck.getRemovable(id).value + (pending[deck] ?? 0);
-      if (change < 0 && inDeck <= 0) continue;
-      if (change > 0 &&
-          GameMethods.blessCurseLeft(id, deck,
-                  pending: pending, gameState: _gameState) <=
-              0) {
-        continue;
-      }
-      pending[deck] = (pending[deck] ?? 0) + change;
-      commands.add(id == 'bless'
-          ? ChangeBlessCommand(change, t.figureId, t.ownerId,
-              gameState: _gameState)
-          : ChangeCurseCommand(change, t.figureId, t.ownerId,
-              gameState: _gameState));
-    }
-    if (commands.isEmpty) return;
-    _gameState.action(GroupCommand(
-        commands, '${_signed(change * commands.length)} $id'));
-  }
-
-  void changeBless(int change) => _changeDeckCards('bless', change);
-
-  void changeCurse(int change) => _changeDeckCards('curse', change);
+  void changeCurse(int change) => _run(StatusActions.buildCurseChange(_refs(),
+      change,
+      gameState: _gameState, settings: _settings));
 
   /// What Undo would reverse right now, or null when there is nothing.
   String? get undoLabel {
