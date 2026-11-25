@@ -233,6 +233,116 @@ class AppLocalizationsZh extends AppLocalizations {
   String get settingsAttackSeveral => 'Attack several monsters at once';
 
   @override
+  String get settingsHeartAttacks => 'Heart attacks';
+
+  @override
+  String heartAttackBadge(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count major heart attacks',
+      one: '1 major heart attack',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String heartAttackLittleBadge(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count little heart attacks',
+      one: '1 little heart attack',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String heartAttackFirstNoted(String victim) {
+    return '$victim\'s first heart attack. Noted.';
+  }
+
+  @override
+  String heartAttackFirstScenario(String victim) {
+    return 'That\'s the first heart attack on record. $victim.';
+  }
+
+  @override
+  String heartAttackFirstBoard(String victim) {
+    return '$victim is on the board. One heart attack.';
+  }
+
+  @override
+  String heartAttackRepeatAgain(String victim, int count) {
+    return '$victim again. Heart attack number $count.';
+  }
+
+  @override
+  String heartAttackRepeatAnyway(String victim, int count) {
+    return '$count heart attacks for $victim. Anyway.';
+  }
+
+  @override
+  String heartAttackRepeatWriteDown(String victim, int count) {
+    return '$victim: heart attack number $count. I\'ll write it down.';
+  }
+
+  @override
+  String heartAttackRepeatRespectable(String victim, int count) {
+    return '$victim has $count heart attacks now. Respectable.';
+  }
+
+  @override
+  String heartAttackRepeatCarryOn(String victim, int count) {
+    return 'Heart attack, $victim, $count. Carry on.';
+  }
+
+  @override
+  String heartAttackLead(String victim, int count) {
+    return '$victim takes the lead with $count heart attacks.';
+  }
+
+  @override
+  String heartAttackOnlyOn(String victim, int count, int speakerCount) {
+    return '$victim is on $count heart attacks. I\'m only on $speakerCount.';
+  }
+
+  @override
+  String heartAttackNotARace(String victim, int count, int speakerCount) {
+    return '$count heart attacks for $victim, $speakerCount for me. Not a race.';
+  }
+
+  @override
+  String heartAttackNotWorried(String victim, int count, int speakerCount) {
+    return '$victim has $count heart attacks. I have $speakerCount. I\'m not worried.';
+  }
+
+  @override
+  String heartAttackJustSaying(String victim, int count, int speakerCount) {
+    return '$victim is on $count heart attacks. I\'m on $speakerCount. Just saying.';
+  }
+
+  @override
+  String heartAttackComfortable(String victim, int count, int speakerCount) {
+    return '$victim has $count heart attacks. I\'m on $speakerCount. Comfortable.';
+  }
+
+  @override
+  String heartAttackTied(String victim, int count) {
+    return '$victim and I are level on $count heart attacks.';
+  }
+
+  @override
+  String heartAttackRecovering(String names) {
+    return '$names had a little heart attack and is recovering until their turn (long rest).';
+  }
+
+  @override
+  String heartAttackRecoveringPlural(String names) {
+    return '$names each had a little heart attack and are recovering until their turn (long rest).';
+  }
+
+  @override
   String get attackSeveralMenu => 'Attack several…';
 
   @override

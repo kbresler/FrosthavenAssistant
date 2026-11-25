@@ -66,6 +66,10 @@ class GameState {
   final _toastMessage = ValueNotifier<String>("");
   final _showAllyDeck = ValueNotifier<bool>(false);
   final pendingAutoAddDialog = ValueNotifier<List<RoomMonsterData>?>(null);
+  // Swerski: a heart-attack reply line, shown once as a passing toast on the
+  // device that applied the change. Deliberately NOT serialised: it must not
+  // sync to other devices or come back on undo.
+  final heartAttackToast = ValueNotifier<String>("");
 
   List<String> _scenarioSectionsAdded = [];
   List<SpecialRule> _scenarioSpecialRules = [];

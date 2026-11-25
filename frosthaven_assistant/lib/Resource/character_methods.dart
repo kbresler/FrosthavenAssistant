@@ -203,6 +203,14 @@ class CharacterMethods {
     item.characterState._conditions.value.clear();
     item.characterState._chill.value = 0;
     item.characterState._plague.value = 0;
+    // New scenario: this scenario's heart attacks become the "earlier
+    // scenarios" tallies.
+    item.characterState._heartAttacksBefore.value +=
+        item.characterState._heartAttacks.value;
+    item.characterState._heartAttacks.value = 0;
+    item.characterState._littleHeartAttacksBefore.value +=
+        item.characterState._littleHeartAttacks.value;
+    item.characterState._littleHeartAttacks.value = 0;
     item.characterState.modifierDeck._initDeck();
     //reapply perks
     final perksSetList = item.characterState.perkList;

@@ -11,6 +11,12 @@ class CharacterState extends FigureState {
 
   final _initiative = ValueNotifier<int>(0);
   final _xp = ValueNotifier<int>(0);
+  // Swerski: heart attacks. Major = health hitting 0, little = long rest
+  // (initiative 99); each kind split into this scenario and earlier ones.
+  final _heartAttacks = ValueNotifier<int>(0);
+  final _heartAttacksBefore = ValueNotifier<int>(0);
+  final _littleHeartAttacks = ValueNotifier<int>(0);
+  final _littleHeartAttacksBefore = ValueNotifier<int>(0);
   final List<MonsterInstance> _summonList = [];
   final _summonListNotifier =
       ValueNotifier<BuiltList<MonsterInstance>>(BuiltList.of([]));
@@ -19,6 +25,18 @@ class CharacterState extends FigureState {
   ValueListenable<String> get display => _display;
   ValueListenable<int> get initiative => _initiative;
   ValueListenable<int> get xp => _xp;
+  ValueListenable<int> get heartAttacks => _heartAttacks;
+  ValueListenable<int> get heartAttacksBefore => _heartAttacksBefore;
+  ValueListenable<int> get littleHeartAttacks => _littleHeartAttacks;
+  ValueListenable<int> get littleHeartAttacksBefore => _littleHeartAttacksBefore;
+
+  /// Every heart attack of this character: both kinds, this and earlier
+  /// scenarios. This is the number the toast lines talk about.
+  int get totalHeartAttacks =>
+      _heartAttacks.value +
+      _heartAttacksBefore.value +
+      _littleHeartAttacks.value +
+      _littleHeartAttacksBefore.value;
   BuiltList<MonsterInstance> get summonList => BuiltList.of(_summonList);
   ValueListenable<BuiltList<MonsterInstance>> get summonListNotifier =>
       _summonListNotifier;
@@ -63,6 +81,13 @@ class CharacterState extends FigureState {
         i++;
       }
     }
+    // Saves carry the all-time totals per kind; this scenario starts at 0.
+    _heartAttacksBefore.value =
+        json.containsKey("heartAttacks") ? json["heartAttacks"] as int : 0;
+    _littleHeartAttacksBefore.value =
+        json.containsKey("littleHeartAttacks")
+            ? json["littleHeartAttacks"] as int
+            : 0;
   }
 
   CharacterState.fromJson(final String id, Map<String, dynamic> json)
@@ -119,6 +144,18 @@ class CharacterState extends FigureState {
       }
     }
     _woundTakenThisRound = json["woundTakenThisRound"] == true;
+    if (json.containsKey("heartAttacks")) {
+      _heartAttacks.value = json["heartAttacks"] as int;
+    }
+    if (json.containsKey("heartAttacksBefore")) {
+      _heartAttacksBefore.value = json["heartAttacksBefore"] as int;
+    }
+    if (json.containsKey("littleHeartAttacks")) {
+      _littleHeartAttacks.value = json["littleHeartAttacks"] as int;
+    }
+    if (json.containsKey("littleHeartAttacksBefore")) {
+      _littleHeartAttacksBefore.value = json["littleHeartAttacksBefore"] as int;
+    }
   }
 
   /// Updates all fields in-place from [json], firing [ValueNotifier] listeners
@@ -188,6 +225,19 @@ class CharacterState extends FigureState {
       }
     }
     _woundTakenThisRound = json["woundTakenThisRound"] == true;
+    // Reset to 0 when a key is absent (official-app state, old saves).
+    _heartAttacks.value =
+        json.containsKey("heartAttacks") ? json["heartAttacks"] as int : 0;
+    _heartAttacksBefore.value = json.containsKey("heartAttacksBefore")
+        ? json["heartAttacksBefore"] as int
+        : 0;
+    _littleHeartAttacks.value = json.containsKey("littleHeartAttacks")
+        ? json["littleHeartAttacks"] as int
+        : 0;
+    _littleHeartAttacksBefore.value =
+        json.containsKey("littleHeartAttacksBefore")
+            ? json["littleHeartAttacksBefore"] as int
+            : 0;
   }
 
   void flipPerk(_StateModifier _, int index) {
@@ -207,6 +257,14 @@ class CharacterState extends FigureState {
     _xp.value = max(value, 0);
   }
 
+  void setHeartAttacks(_StateModifier _, int value) {
+    _heartAttacks.value = value < 0 ? 0 : value;
+  }
+
+  void setLittleHeartAttacks(_StateModifier _, int value) {
+    _littleHeartAttacks.value = value < 0 ? 0 : value;
+  }
+
   void addSummon(_StateModifier _, MonsterInstance summon) {
     _summonList.add(summon);
     _notifySummonList();
@@ -224,6 +282,9 @@ class CharacterState extends FigureState {
         '"level": ${level.value}, '
         '"useFHPerks": ${jsonEncode(useFHPerks.value)}, '
         '"display": ${jsonEncode(display.value)}, '
+        '"heartAttacks": ${heartAttacks.value + heartAttacksBefore.value}, '
+        '"littleHeartAttacks": '
+        '${littleHeartAttacks.value + littleHeartAttacksBefore.value}, '
         '"perkList": ${_perkList.toString()} '
         '}';
   }
@@ -246,6 +307,10 @@ class CharacterState extends FigureState {
         'conditionsAddedPreviousTurn':
             _conditionsAddedPreviousTurn.map((c) => c.index).toList(),
         'woundTakenThisRound': _woundTakenThisRound,
+        'heartAttacks': heartAttacks.value,
+        'heartAttacksBefore': heartAttacksBefore.value,
+        'littleHeartAttacks': littleHeartAttacks.value,
+        'littleHeartAttacksBefore': littleHeartAttacksBefore.value,
       };
 
   @override

@@ -44,6 +44,8 @@ class Settings {
   final parchmentMenus = ValueNotifier<bool>(true);
   // Swerski: apply health and conditions to several standees at once.
   final attackSeveral = ValueNotifier<bool>(true);
+  // Swerski: a character hitting 0 health has a heart attack (kielbasa badge + tally).
+  final heartAttacks = ValueNotifier<bool>(true);
   final hideLootDeck = ValueNotifier<bool>(false);
   final shimmer = ValueNotifier<bool>(
       (Platform.isWindows || Platform.isLinux || Platform.isMacOS));
@@ -308,6 +310,9 @@ class Settings {
       if (data["attackSeveral"] != null) {
         attackSeveral.value = data["attackSeveral"];
       }
+      if (data["heartAttacks"] != null) {
+        heartAttacks.value = data["heartAttacks"];
+      }
       if (data["lastKnownConnection"] != null) {
         lastKnownConnection = data["lastKnownConnection"];
       }
@@ -417,6 +422,7 @@ class Settings {
         '"turnGlow": ${turnGlow.value}, '
         '"parchmentMenus": ${parchmentMenus.value}, '
         '"attackSeveral": ${attackSeveral.value}, '
+        '"heartAttacks": ${heartAttacks.value}, '
         '"hideLootDeck": ${hideLootDeck.value}, '
         '"style": ${style.value.index}, '
         '"darkMode": ${darkMode.value}, '

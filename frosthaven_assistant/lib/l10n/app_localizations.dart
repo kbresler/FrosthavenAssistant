@@ -527,6 +527,126 @@ abstract class AppLocalizations {
   /// **'Attack several monsters at once'**
   String get settingsAttackSeveral;
 
+  /// No description provided for @settingsHeartAttacks.
+  ///
+  /// In en, this message translates to:
+  /// **'Heart attacks'**
+  String get settingsHeartAttacks;
+
+  /// No description provided for @heartAttackBadge.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 major heart attack} other{{count} major heart attacks}}'**
+  String heartAttackBadge(int count);
+
+  /// No description provided for @heartAttackLittleBadge.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 little heart attack} other{{count} little heart attacks}}'**
+  String heartAttackLittleBadge(int count);
+
+  /// No description provided for @heartAttackFirstNoted.
+  ///
+  /// In en, this message translates to:
+  /// **'{victim}\'s first heart attack. Noted.'**
+  String heartAttackFirstNoted(String victim);
+
+  /// No description provided for @heartAttackFirstScenario.
+  ///
+  /// In en, this message translates to:
+  /// **'That\'s the first heart attack on record. {victim}.'**
+  String heartAttackFirstScenario(String victim);
+
+  /// No description provided for @heartAttackFirstBoard.
+  ///
+  /// In en, this message translates to:
+  /// **'{victim} is on the board. One heart attack.'**
+  String heartAttackFirstBoard(String victim);
+
+  /// No description provided for @heartAttackRepeatAgain.
+  ///
+  /// In en, this message translates to:
+  /// **'{victim} again. Heart attack number {count}.'**
+  String heartAttackRepeatAgain(String victim, int count);
+
+  /// No description provided for @heartAttackRepeatAnyway.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} heart attacks for {victim}. Anyway.'**
+  String heartAttackRepeatAnyway(String victim, int count);
+
+  /// No description provided for @heartAttackRepeatWriteDown.
+  ///
+  /// In en, this message translates to:
+  /// **'{victim}: heart attack number {count}. I\'ll write it down.'**
+  String heartAttackRepeatWriteDown(String victim, int count);
+
+  /// No description provided for @heartAttackRepeatRespectable.
+  ///
+  /// In en, this message translates to:
+  /// **'{victim} has {count} heart attacks now. Respectable.'**
+  String heartAttackRepeatRespectable(String victim, int count);
+
+  /// No description provided for @heartAttackRepeatCarryOn.
+  ///
+  /// In en, this message translates to:
+  /// **'Heart attack, {victim}, {count}. Carry on.'**
+  String heartAttackRepeatCarryOn(String victim, int count);
+
+  /// No description provided for @heartAttackLead.
+  ///
+  /// In en, this message translates to:
+  /// **'{victim} takes the lead with {count} heart attacks.'**
+  String heartAttackLead(String victim, int count);
+
+  /// No description provided for @heartAttackOnlyOn.
+  ///
+  /// In en, this message translates to:
+  /// **'{victim} is on {count} heart attacks. I\'m only on {speakerCount}.'**
+  String heartAttackOnlyOn(String victim, int count, int speakerCount);
+
+  /// No description provided for @heartAttackNotARace.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} heart attacks for {victim}, {speakerCount} for me. Not a race.'**
+  String heartAttackNotARace(String victim, int count, int speakerCount);
+
+  /// No description provided for @heartAttackNotWorried.
+  ///
+  /// In en, this message translates to:
+  /// **'{victim} has {count} heart attacks. I have {speakerCount}. I\'m not worried.'**
+  String heartAttackNotWorried(String victim, int count, int speakerCount);
+
+  /// No description provided for @heartAttackJustSaying.
+  ///
+  /// In en, this message translates to:
+  /// **'{victim} is on {count} heart attacks. I\'m on {speakerCount}. Just saying.'**
+  String heartAttackJustSaying(String victim, int count, int speakerCount);
+
+  /// No description provided for @heartAttackComfortable.
+  ///
+  /// In en, this message translates to:
+  /// **'{victim} has {count} heart attacks. I\'m on {speakerCount}. Comfortable.'**
+  String heartAttackComfortable(String victim, int count, int speakerCount);
+
+  /// No description provided for @heartAttackTied.
+  ///
+  /// In en, this message translates to:
+  /// **'{victim} and I are level on {count} heart attacks.'**
+  String heartAttackTied(String victim, int count);
+
+  /// No description provided for @heartAttackRecovering.
+  ///
+  /// In en, this message translates to:
+  /// **'{names} had a little heart attack and is recovering until their turn (long rest).'**
+  String heartAttackRecovering(String names);
+
+  /// No description provided for @heartAttackRecoveringPlural.
+  ///
+  /// In en, this message translates to:
+  /// **'{names} each had a little heart attack and are recovering until their turn (long rest).'**
+  String heartAttackRecoveringPlural(String names);
+
   /// No description provided for @attackSeveralMenu.
   ///
   /// In en, this message translates to:

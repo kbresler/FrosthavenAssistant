@@ -106,6 +106,39 @@ class ToastNotifier extends StatelessWidget {
   }
 }
 
+/// Swerski: shows a heart-attack reply line as a single passing toast, then
+/// clears it. Reads the transient (non-synced, non-undoable) notifier the
+/// health command sets on the device that applied the change.
+class HeartAttackToastNotifier extends StatelessWidget {
+  const HeartAttackToastNotifier({super.key, this.gameState});
+
+  // injected for testing
+  final GameState? gameState;
+
+  @override
+  Widget build(BuildContext context) {
+    final gameState = this.gameState ?? getIt<GameState>();
+    return ValueListenableBuilder<String>(
+        valueListenable: gameState.heartAttackToast,
+        builder: (context, message, child) {
+          if (message.isNotEmpty) {
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              // Clear before showing so the same line can fire again later.
+              gameState.heartAttackToast.value = "";
+              if (context.mounted) {
+                ScaffoldMessenger.of(context).removeCurrentSnackBar();
+                showToast(context, message);
+              }
+            });
+          }
+          return const SizedBox(
+            width: 0,
+            height: 0,
+          );
+        });
+  }
+}
+
 class AutoAddDialogTrigger extends StatelessWidget {
   const AutoAddDialogTrigger({super.key, this.gameState});
 
@@ -192,6 +225,7 @@ class MainScaffoldBody extends StatelessWidget {
                   child: CircularProgressIndicator(),
                 )),
               const ToastNotifier(),
+              const HeartAttackToastNotifier(),
               const AutoAddDialogTrigger(),
               ValueListenableBuilder<Map<String, CampaignModel>>(
                   valueListenable: vm.modelData,
