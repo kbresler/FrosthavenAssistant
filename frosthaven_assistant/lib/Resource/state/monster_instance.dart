@@ -67,6 +67,16 @@ class MonsterInstance extends FigureState {
     _turnState = value;
   }
 
+  /// Swerski: set when this standee's turn was skipped because it is stunned,
+  /// so that what happens at the start of a turn (wounds) still reaches it.
+  /// Only meaningful within one command, so not saved.
+  bool get skippedForStun => _skippedForStun;
+  bool _skippedForStun = false;
+
+  void clearSkippedForStun(_StateModifier _) {
+    _skippedForStun = false;
+  }
+
   void _setLevel(Monster monster, {GameState? gameState}) {
     StatValue newHealthValue = const IntStatValue(
         10); //need to put something outer than 0 or the standee will die immediately causing glitch

@@ -45,6 +45,7 @@ class NextRoundCommand extends Command {
         _gameState.currentList.last.turnState.value != TurnsState.done) {
       RoundMethods.setTurnDone(stateAccess, _gameState.currentList.length - 1);
     }
+    RoundMethods.finishCurrentTurns(stateAccess);
     RoundMethods.clearTurnState(stateAccess, false);
     RoundMethods.sortCharactersFirst(stateAccess);
 

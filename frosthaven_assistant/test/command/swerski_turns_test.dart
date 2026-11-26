@@ -6,7 +6,9 @@ import 'package:frosthaven_assistant/Resource/commands/add_condition_command.dar
 import 'package:frosthaven_assistant/Resource/commands/add_monster_command.dart';
 import 'package:frosthaven_assistant/Resource/commands/add_standee_command.dart';
 import 'package:frosthaven_assistant/Resource/commands/change_stat_commands/change_health_command.dart';
+import 'package:frosthaven_assistant/Resource/commands/draw_command.dart';
 import 'package:frosthaven_assistant/Resource/commands/next_round_command.dart';
+import 'package:frosthaven_assistant/Resource/commands/set_init_command.dart';
 import 'package:frosthaven_assistant/Resource/commands/turn_done_command.dart';
 import 'package:frosthaven_assistant/Resource/game_data.dart';
 import 'package:frosthaven_assistant/Resource/enums.dart';
@@ -140,6 +142,124 @@ void main() {
       checkSaveState();
       expect(standeeTurns(),
           [TurnsState.done, TurnsState.current, TurnsState.notDone]);
+    });
+  });
+
+  group('conditions drop off with the standee\'s own turn', () {
+    setUp(() {
+      settings.expireConditions.value = true;
+    });
+
+    List<Condition> of(int nr) => standee(nr).conditions.value.toList();
+
+    void add(Condition condition, int nr) =>
+        addCondition(condition, standee(nr).getId(), monster.id);
+
+    // Draws the round with the monster group going first, standee 1 up.
+    void draw() {
+      SetInitCommand(character.id, 99, gameState: gs).execute();
+      DrawCommand(gameState: gs).execute();
+      expect(standee(1).turnState, TurnsState.current);
+    }
+
+    test('at the end of that standee, not of the group', () {
+      add(Condition.muddle, 1);
+
+      turnDone(monster.id); // standee 1
+      expect(of(1), contains(Condition.muddle));
+      turnDone(monster.id); // standee 2
+
+      expect(of(1), isNot(contains(Condition.muddle)));
+    });
+
+    test('a skipped standee loses its stun as it is passed over', () {
+      add(Condition.stun, 2);
+
+      turnDone(monster.id); // standee 1
+      turnDone(monster.id); // 2 is passed over, standee 3
+
+      expect(of(2), isNot(contains(Condition.stun)));
+    });
+
+    test('a stun put on a waiting standee costs one turn, not two', () {
+      draw();
+      add(Condition.stun, 2); // while standee 1 is acting
+
+      turnDone(monster.id); // 2 is passed over, standee 3
+
+      expect(standee(3).turnState, TurnsState.current);
+      expect(of(2), isNot(contains(Condition.stun)));
+    });
+
+    test('a condition gained on its own turn stays for the next one', () {
+      draw();
+      add(Condition.muddle, 1);
+
+      for (int i = 0; i < 3; i++) {
+        turnDone(monster.id); // standees 1-3, group done
+      }
+
+      expect(monster.turnState.value, TurnsState.done);
+      expect(of(1), contains(Condition.muddle));
+    });
+
+    test('only one chill comes off', () {
+      add(Condition.chill, 1);
+      add(Condition.chill, 1);
+
+      for (int i = 0; i < 4; i++) {
+        turnDone(monster.id); // start, standees 1-3, group done
+      }
+
+      expect(monster.turnState.value, TurnsState.done);
+      expect(of(1), [Condition.chill]);
+    });
+
+    test('the next round ends the turn of standees that never went', () {
+      add(Condition.muddle, 3);
+
+      NextRoundCommand(
+              gameState: gs, gameData: getIt<GameData>(), settings: settings)
+          .execute();
+
+      expect(of(3), isNot(contains(Condition.muddle)));
+      expect(standeeTurns(), everyElement(TurnsState.notDone));
+    });
+
+    test('going back gives the condition back', () {
+      add(Condition.muddle, 1);
+      turnDone(monster.id); // standee 1
+      turnDone(monster.id); // standee 2
+
+      turnDone(character.id); // back to the character
+
+      expect(of(1), contains(Condition.muddle));
+    });
+
+    test('a finished standee keeps it off when late standees take a turn', () {
+      add(Condition.muddle, 1);
+      for (int i = 0; i < 4; i++) {
+        turnDone(monster.id);
+      }
+      AddStandeeCommand(4, null, monster.id, MonsterType.normal, false,
+              gameState: gs)
+          .execute();
+
+      turnDone(monster.id); // standee 4 only
+      turnDone(monster.id); // group done
+
+      expect(of(1), isNot(contains(Condition.muddle)));
+    });
+
+    test('replaying the whole group gives the condition back', () {
+      add(Condition.muddle, 1);
+      for (int i = 0; i < 4; i++) {
+        turnDone(monster.id);
+      }
+
+      turnDone(monster.id); // everyone goes again
+
+      expect(of(1), contains(Condition.muddle));
     });
   });
 
@@ -277,6 +397,167 @@ void main() {
 
       expect(nr1.health.value, health - 1);
       expect(nr1.conditions.value, isNot(contains(Condition.ward)));
+    });
+
+    // Stun takes the turn away, not what happens at the start of it.
+    void stunAndWound(int nr) {
+      addCondition(Condition.stun, standee(nr).getId(), monster.id);
+      addCondition(Condition.wound, standee(nr).getId(), monster.id);
+    }
+
+    test('a stunned character is still wounded', () {
+      addCondition(Condition.stun, character.id, character.id);
+      addCondition(Condition.wound, character.id, character.id);
+      final health = character.characterState.health.value;
+
+      turnDone(character.id);
+
+      expect(character.characterState.health.value, health - 1);
+    });
+
+    test('a stunned standee is wounded when it is skipped', () {
+      stunAndWound(2);
+      final health = standee(2).health.value;
+
+      turnDone(monster.id); // standee 1 starts
+      expect(standee(2).health.value, health);
+      turnDone(monster.id); // standee 2 is skipped, standee 3 starts
+
+      expect(standee(2).health.value, health - 1);
+      expect(standeeTurns(),
+          [TurnsState.done, TurnsState.done, TurnsState.current]);
+      expect(gs.toastMessage.value, contains('Wound damage'));
+    });
+
+    test('a stunned first standee is wounded when the group starts', () {
+      stunAndWound(1);
+      final health = standee(1).health.value;
+
+      turnDone(monster.id);
+
+      expect(standee(1).health.value, health - 1);
+      expect(standee(2).turnState, TurnsState.current);
+    });
+
+    test('a stunned last standee is wounded as the group finishes', () {
+      stunAndWound(3);
+      final health = standee(3).health.value;
+
+      turnDone(monster.id); // standee 1
+      turnDone(monster.id); // standee 2
+      turnDone(monster.id); // standee 3 is skipped, group done
+
+      expect(monster.turnState.value, TurnsState.done);
+      expect(standee(3).health.value, health - 1);
+    });
+
+    // A second group, after the first one in the list.
+    Monster addSecondGroup() {
+      AddMonsterCommand('Ancient Artillery (FH)', 1, false, gameState: gs)
+          .execute();
+      final second = gs.currentList.whereType<Monster>().last;
+      for (final nr in [1, 2]) {
+        AddStandeeCommand(nr, null, second.id, MonsterType.normal, false,
+                gameState: gs)
+            .execute();
+      }
+      return second;
+    }
+
+    test('an all-stunned group is wounded and passes to the next group', () {
+      final second = addSecondGroup();
+      for (final nr in [1, 2, 3]) {
+        stunAndWound(nr);
+      }
+      final health = standee(1).health.value;
+      final next = second.monsterInstances.first;
+      addCondition(Condition.wound, next.getId(), second.id);
+      final nextHealth = next.health.value;
+
+      turnDone(monster.id);
+
+      expect(monster.monsterInstances.map((i) => i.health.value),
+          everyElement(health - 1));
+      expect(monster.turnState.value, TurnsState.done);
+      expect(second.turnState.value, TurnsState.current);
+      expect(next.turnState, TurnsState.current);
+      expect(next.health.value, nextHealth - 1);
+    });
+
+    test('finishing a standee passes over stunned ones into the next group', () {
+      final second = addSecondGroup();
+      stunAndWound(2);
+      stunAndWound(3);
+      final health = standee(2).health.value;
+
+      turnDone(monster.id); // standee 1
+      turnDone(monster.id); // 2 and 3 are stunned: on to the next group
+
+      expect(standee(2).health.value, health - 1);
+      expect(standee(3).health.value, health - 1);
+      expect(monster.turnState.value, TurnsState.done);
+      expect(second.monsterInstances.first.turnState, TurnsState.current);
+    });
+
+    test('Draw passes over an all-stunned first group', () {
+      for (final nr in [1, 2, 3]) {
+        stunAndWound(nr);
+      }
+      final health = standee(1).health.value;
+      // Monster cards are always below 99, so the group goes first.
+      SetInitCommand(character.id, 99, gameState: gs).execute();
+
+      DrawCommand(gameState: gs).execute();
+
+      expect(gs.currentList.first, monster);
+      expect(monster.turnState.value, TurnsState.done);
+      expect(character.turnState.value, TurnsState.current);
+      expect(monster.monsterInstances.map((i) => i.health.value),
+          everyElement(health - 1));
+    });
+
+    test('a stunned standee killed by its wound is removed', () {
+      stunAndWound(2);
+      ChangeHealthCommand(
+              1 - standee(2).health.value, standee(2).getId(), monster.id,
+              gameState: gs)
+          .execute();
+
+      turnDone(monster.id); // standee 1
+      turnDone(monster.id); // standee 2 dies, standee 3 goes
+
+      expect(monster.monsterInstances.map((i) => i.standeeNr), [1, 3]);
+      expect(standee(3).turnState, TurnsState.current);
+    });
+
+    test('a group wiped out by wounds while stunned ends its turn', () {
+      for (final nr in [1, 2, 3]) {
+        stunAndWound(nr);
+        ChangeHealthCommand(
+                1 - standee(nr).health.value, standee(nr).getId(), monster.id,
+                gameState: gs)
+            .execute();
+      }
+
+      turnDone(monster.id);
+
+      expect(monster.monsterInstances, isEmpty);
+      expect(monster.turnState.value, TurnsState.done);
+    });
+
+    test('a stunned standee reached after a wound death is wounded too', () {
+      addCondition(Condition.wound, standee(1).getId(), monster.id);
+      ChangeHealthCommand(
+              1 - standee(1).health.value, standee(1).getId(), monster.id,
+              gameState: gs)
+          .execute();
+      stunAndWound(2);
+      final health = standee(2).health.value;
+
+      turnDone(monster.id); // standee 1 dies, 2 is skipped, 3 goes
+
+      expect(standee(2).health.value, health - 1);
+      expect(standee(3).turnState, TurnsState.current);
     });
 
     test('nothing happens with the setting off', () {

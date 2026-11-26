@@ -394,9 +394,7 @@ class RoundMethods {
     //set all before to done.
     for (int i = 0; i < index; i++) {
       if (gs.currentList[i].turnState.value != TurnsState.done) {
-        gs.currentList[i]._turnState.value = TurnsState.done;
-        _setAllStandeeTurns(gs.currentList[i], TurnsState.done);
-        removeExpiringConditionsFromListItem(s, gs.currentList[i]);
+        _finishTurn(s, gs.currentList[i], perStandee);
       }
     }
     //if on index is NOT current then set to current else set to done
@@ -407,13 +405,11 @@ class RoundMethods {
       // group finishes the current standee; the group is done after the last.
       if (perStandee &&
           indexItem is Monster &&
-          _advanceStandeeTurn(indexItem)) {
+          _advanceStandeeTurn(s, indexItem)) {
         return;
       }
-      indexItem._turnState.value = TurnsState.done;
-      _setAllStandeeTurns(indexItem, TurnsState.done);
-      removeExpiringConditionsFromListItem(s, gs.currentList[index]);
       //remove expiring conditions
+      _finishTurn(s, indexItem, perStandee);
     } else {
       newIndex = index;
     }
@@ -423,12 +419,19 @@ class RoundMethods {
       ListItemData data = gs.currentList[newIndex];
       if (data is Monster) {
         if (data.isActive && !GameMethods.isInactiveForRule(data.type.name)) {
-          if (data.turnState.value == TurnsState.done) {
+          // Per standee, _startStandeeTurns gives conditions back itself, to
+          // only the standees that go again.
+          if (!perStandee && data.turnState.value == TurnsState.done) {
             reapplyConditionsFromListItem(s, data);
           }
           data._turnState.value = TurnsState.current;
           if (perStandee) {
-            _startStandeeTurns(data);
+            _startStandeeTurns(s, data);
+            if (_noOneCanAct(data)) {
+              // All stunned: the turn passes straight to the next figure.
+              _finishTurn(s, data, perStandee);
+              continue;
+            }
           }
           break;
         }
@@ -444,23 +447,81 @@ class RoundMethods {
     }
     //set rest to not done
     for (int i = newIndex + 1; i < gs.currentList.length; i++) {
-      if (gs.currentList[i].turnState.value == TurnsState.done) {
-        reapplyConditionsFromListItem(s, gs.currentList[i]);
+      final item = gs.currentList[i];
+      if (perStandee && item is Monster) {
+        // A group can be part way through: only standees that went lost any.
+        _reapplyToDoneStandees(s, item);
+      } else if (item.turnState.value == TurnsState.done) {
+        reapplyConditionsFromListItem(s, item);
       }
-      gs.currentList[i]._turnState.value = TurnsState.notDone;
-      _setAllStandeeTurns(gs.currentList[i], TurnsState.notDone);
+      item._turnState.value = TurnsState.notDone;
+      _setAllStandeeTurns(item, TurnsState.notDone);
+    }
+  }
+
+  /// Ends any turn still going, for the end of a round: with one standee at a
+  /// time, a group can be left with standees that never went.
+  static void finishCurrentTurns(_StateModifier s,
+      {GameState? gameState, Settings? settings}) {
+    final gs = gameState ?? getIt<GameState>();
+    for (final item in gs.currentList) {
+      if (item.turnState.value == TurnsState.current) {
+        _finishTurn(s, item, _perStandeeTurns(settings));
+      }
+    }
+  }
+
+  /// Marks [item]'s turn over and drops what expires with it. Per standee,
+  /// those that already had their own turn have dropped theirs.
+  static void _finishTurn(
+      _StateModifier s, ListItemData item, bool perStandee) {
+    item._turnState.value = TurnsState.done;
+    if (perStandee && item is Monster) {
+      for (final instance in item._monsterInstances) {
+        if (instance._turnState != TurnsState.done) {
+          _finishStandeeTurn(s, instance);
+        }
+      }
+    } else {
+      _setAllStandeeTurns(item, TurnsState.done);
+      removeExpiringConditionsFromListItem(s, item);
+    }
+  }
+
+  static void _finishStandeeTurn(_StateModifier s, MonsterInstance instance) {
+    instance._turnState = TurnsState.done;
+    removeExpiringConditions(s, instance);
+  }
+
+  static void _reapplyToDoneStandees(_StateModifier s, Monster monster) {
+    for (final instance in monster._monsterInstances) {
+      if (instance._turnState == TurnsState.done) {
+        reapplyConditions(s, instance);
+      }
     }
   }
 
   /// Makes [item] the current figure, as at the start of the round. With
   /// per-standee turns on, a monster group's first standee becomes current too.
-  static void startTurn(_StateModifier _, ListItemData item,
-      {Settings? settings}) {
+  static void startTurn(_StateModifier s, ListItemData item,
+      {GameState? gameState, Settings? settings}) {
     item._turnState.value = TurnsState.current;
     if (item is Monster && _perStandeeTurns(settings)) {
-      _startStandeeTurns(item);
+      _startStandeeTurns(s, item);
+      if (_noOneCanAct(item)) {
+        // All stunned: finish this group and start the next figure.
+        final gs = gameState ?? getIt<GameState>();
+        setTurnDone(s, gs.currentList.indexOf(item),
+            gameState: gs, settings: settings);
+      }
     }
   }
+
+  /// After [_startStandeeTurns]: true when every standee still to go was
+  /// stunned, so the group's turn is over as soon as it starts.
+  static bool _noOneCanAct(Monster monster) =>
+      monster._monsterInstances.isNotEmpty &&
+      !monster._monsterInstances.any((i) => i.turnState == TurnsState.current);
 
   /// Called after the current standee of [monster] was removed mid-turn (for
   /// example killed by wound damage at the start of its turn). Moves on to the
@@ -476,7 +537,7 @@ class RoundMethods {
         .any((i) => i.turnState == TurnsState.current)) {
       return;
     }
-    if (_advanceStandeeTurn(monster)) {
+    if (_advanceStandeeTurn(s, monster)) {
       return;
     }
     final index = gs.currentList.indexOf(monster);
@@ -507,7 +568,7 @@ class RoundMethods {
   /// round stay done, so only those still to go take a turn (for example new
   /// standees revealed by a door after the group went). If every standee has
   /// already acted, it is a deliberate replay and they all go again.
-  static void _startStandeeTurns(Monster monster) {
+  static void _startStandeeTurns(_StateModifier s, Monster monster) {
     for (final instance in monster._monsterInstances) {
       if (instance._turnState == TurnsState.current) {
         instance._turnState = TurnsState.notDone;
@@ -516,18 +577,20 @@ class RoundMethods {
     final someStillToGo = monster._monsterInstances.any((i) =>
         i._turnState == TurnsState.notDone && i.health.value > 0);
     if (!someStillToGo) {
+      _reapplyToDoneStandees(s, monster);
       _setAllStandeeTurns(monster, TurnsState.notDone);
     }
-    _advanceStandeeTurn(monster);
+    _advanceStandeeTurn(s, monster);
   }
 
   /// Finishes the current standee (if any) and makes the next one that hasn't
-  /// acted current. Stunned standees lose their turn and are skipped.
+  /// acted current. Stunned standees lose their turn and are skipped, but are
+  /// marked so the start-of-turn effects still reach them.
   /// Returns false when no standee is left to act.
-  static bool _advanceStandeeTurn(Monster monster) {
+  static bool _advanceStandeeTurn(_StateModifier s, Monster monster) {
     for (final instance in monster._monsterInstances) {
       if (instance._turnState == TurnsState.current) {
-        instance._turnState = TurnsState.done;
+        _finishStandeeTurn(s, instance);
       }
     }
     for (final instance in monster._monsterInstances) {
@@ -536,7 +599,8 @@ class RoundMethods {
         continue;
       }
       if (instance.conditions.value.contains(Condition.stun)) {
-        instance._turnState = TurnsState.done;
+        _finishStandeeTurn(s, instance);
+        instance._skippedForStun = true;
         continue;
       }
       instance._turnState = TurnsState.current;

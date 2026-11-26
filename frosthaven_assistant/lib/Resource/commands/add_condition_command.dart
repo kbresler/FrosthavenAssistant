@@ -1,5 +1,7 @@
+import '../../services/service_locator.dart';
 import '../enums.dart';
 import '../game_methods.dart';
+import '../settings.dart';
 import '../state/game_state.dart';
 import 'command_l10n.dart';
 
@@ -34,9 +36,17 @@ class AddConditionCommand extends Command {
       }
 
       //only added this turn if is current or done
+      final perStandee = getIt.isRegistered<Settings>() &&
+          getIt<Settings>().perStandeeTurns.value;
       for (final item in _gameState.currentList) {
         if (item.id == ownerId) {
-          if (item.turnState.value != TurnsState.notDone &&
+          // Swerski: with one standee at a time, its turn is its own, not the
+          // group's, or a waiting standee would keep the condition a round.
+          final turn =
+              perStandee && item is Monster && figure is MonsterInstance
+                  ? figure.turnState
+                  : item.turnState.value;
+          if (turn != TurnsState.notDone &&
               _gameState.roundState.value == RoundState.playTurns) {
             figure.addToConditionsThisTurn(stateAccess, condition);
           }

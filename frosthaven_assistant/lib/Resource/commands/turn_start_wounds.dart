@@ -12,8 +12,9 @@ import 'remove_condition_command.dart';
 /// Usage inside a command: take [snapshotTurns] before changing turn states,
 /// then call [applyTurnStartWounds] with it afterwards. Only figures that went
 /// from "not done" to "current" take damage, so tapping a finished figure to
-/// replay its turn does not wound it twice. Undo restores health as usual,
-/// because the whole command is one undo step.
+/// replay its turn does not wound it twice. A stunned standee that is skipped
+/// takes it too: stun stops it acting, not being wounded. Undo restores health
+/// as usual, because the whole command is one undo step.
 mixin TurnStartWounds on Command {
   static const int _kMaxPasses = 20;
   static const int _kToastSeconds = 5;
@@ -32,6 +33,8 @@ mixin TurnStartWounds on Command {
         turns[_monsterKey(item)] = item.turnState.value;
         for (final instance in item.monsterInstances) {
           turns[_standeeKey(item, instance)] = instance.turnState;
+          // Only skips made after this snapshot count.
+          instance.clearSkippedForStun(stateAccess);
         }
       }
     }
@@ -116,8 +119,12 @@ mixin TurnStartWounds on Command {
       } else if (item is Monster) {
         final groupStarted = started(_monsterKey(item), item.turnState.value);
         for (final instance in item.monsterInstances) {
+          final key = _standeeKey(item, instance);
           final standeeStarted = perStandee
-              ? started(_standeeKey(item, instance), instance.turnState)
+              ? started(key, instance.turnState) ||
+                  // Skipped for stun: its turn still started.
+                  (instance.skippedForStun &&
+                      (before[key] ?? TurnsState.notDone) == TurnsState.notDone)
               : groupStarted;
           if (standeeStarted) {
             _addHit(hits, instance, instance.getId(), item.id,

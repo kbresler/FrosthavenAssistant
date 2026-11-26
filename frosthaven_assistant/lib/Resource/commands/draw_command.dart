@@ -25,7 +25,8 @@ class DrawCommand extends Command with TurnStartWounds {
     GameUtilMethods.clearBattleGoalReminder(gameState: _gameState);
     if (_gameState.currentList.isNotEmpty) {
       final before = snapshotTurns();
-      RoundMethods.startTurn(stateAccess, _gameState.currentList.first);
+      RoundMethods.startTurn(stateAccess, _gameState.currentList.first,
+          gameState: _gameState);
       applyTurnStartWounds(before);
     }
     _maybeLittleHeartAttacks();
