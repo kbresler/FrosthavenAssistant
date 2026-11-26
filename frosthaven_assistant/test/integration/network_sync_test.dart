@@ -1,10 +1,13 @@
 // ignore_for_file: no-magic-number, avoid-late-keyword, avoid-top-level-members-in-tests, prefer-match-file-name, avoid-non-null-assertion
 
 import 'dart:async';
-import 'dart:convert' show utf8;
+import 'dart:convert' show jsonDecode, jsonEncode, utf8;
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:frosthaven_assistant/Resource/commands/add_character_command.dart';
+import 'package:frosthaven_assistant/Resource/commands/adjust_heart_attacks_command.dart';
+import 'package:frosthaven_assistant/Resource/commands/remove_character_command.dart';
 import 'package:frosthaven_assistant/Resource/commands/set_level_command.dart';
 import 'package:frosthaven_assistant/Resource/game_data.dart';
 import 'package:frosthaven_assistant/Resource/settings.dart';
@@ -278,6 +281,101 @@ void main() {
         clientA.receive(timeout: const Duration(milliseconds: 300)),
         throwsA(isA<TimeoutException>()),
       );
+    });
+  });
+
+  // ── Swerski field preservation (SuperNetwork phase 0) ────────────────────────
+
+  group('Swerski field preservation', () {
+    test('client state without heart-attack keys keeps the server counts',
+        () async {
+      // Server-side history before any client connects: a hero with all
+      // four heart-attack counts raised.
+      _serverGameState
+          .action(AddCharacterCommand('Blinkblade', 'Frosthaven', null, 1));
+      final heroId =
+          _serverGameState.currentList.whereType<Character>().first.id;
+      addTearDown(() {
+        final left = _serverGameState.currentList
+            .whereType<Character>()
+            .where((c) => c.id == heroId)
+            .toList();
+        if (left.isNotEmpty) {
+          _serverGameState.action(
+              RemoveCharacterCommand(left, gameState: _serverGameState));
+        }
+      });
+
+      void tap(HeartAttackKind kind, HeartAttackPeriod period, int times) {
+        for (var i = 0; i < times; i++) {
+          _serverGameState.action(AdjustHeartAttacksCommand(
+            characterId: heroId,
+            kind: kind,
+            period: period,
+            change: 1,
+            gameState: _serverGameState,
+          ));
+        }
+      }
+
+      tap(HeartAttackKind.major, HeartAttackPeriod.thisScenario, 2);
+      tap(HeartAttackKind.major, HeartAttackPeriod.earlier, 1);
+      tap(HeartAttackKind.little, HeartAttackPeriod.thisScenario, 3);
+      tap(HeartAttackKind.little, HeartAttackPeriod.earlier, 4);
+
+      final clientA = await WireClient.connect('127.0.0.1', _serverPort);
+      final clientB = await WireClient.connect('127.0.0.1', _serverPort);
+      addTearDown(clientA.close);
+      addTearDown(clientB.close);
+
+      final initA = await clientA.doInit();
+      await clientB.doInit();
+      expect(initA.state, contains('"heartAttacks":2'),
+          reason: 'The synced state should carry the server counts');
+
+      // Client A is the official app: its state carries no Swerski keys.
+      final official = jsonDecode(initA.state) as Map<String, dynamic>;
+      for (final entry in official['currentList'] as List<dynamic>) {
+        if (entry is Map<String, dynamic> &&
+            entry['characterState'] is Map<String, dynamic>) {
+          (entry['characterState'] as Map<String, dynamic>)
+            ..remove('heartAttacks')
+            ..remove('heartAttacksBefore')
+            ..remove('littleHeartAttacks')
+            ..remove('littleHeartAttacksBefore');
+        }
+      }
+
+      clientA.send(StateEnvelope(
+        index: initA.index + 1,
+        description: 'OfficialAppAction',
+        eventJson: '{"type":"none"}',
+        state: jsonEncode(official),
+      ).encode());
+
+      final forwarded = StateEnvelope.tryDecode(await clientB.receive());
+      expect(forwarded, isNotNull);
+
+      // The server must still hold all four counts.
+      final kept = _serverGameState.currentList
+          .whereType<Character>()
+          .firstWhere((c) => c.id == heroId)
+          .characterState;
+      expect(kept.heartAttacks.value, equals(2));
+      expect(kept.heartAttacksBefore.value, equals(1));
+      expect(kept.littleHeartAttacks.value, equals(3));
+      expect(kept.littleHeartAttacksBefore.value, equals(4));
+
+      // The state forwarded to B must carry them too.
+      final bJson = jsonDecode(forwarded!.state) as Map<String, dynamic>;
+      final bHero = (bJson['currentList'] as List<dynamic>)
+          .whereType<Map<String, dynamic>>()
+          .firstWhere((e) => e['id'] == heroId);
+      final bState = bHero['characterState'] as Map<String, dynamic>;
+      expect(bState['heartAttacks'], equals(2));
+      expect(bState['heartAttacksBefore'], equals(1));
+      expect(bState['littleHeartAttacks'], equals(3));
+      expect(bState['littleHeartAttacksBefore'], equals(4));
     });
   });
 

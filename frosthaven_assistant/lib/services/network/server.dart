@@ -14,6 +14,7 @@ import '../service_locator.dart';
 import 'communication.dart';
 import 'connection.dart';
 import 'network.dart';
+import 'superfan/preserve_swerski_fields.dart';
 
 class Server extends GameServer {
   final GameState _gameState;
@@ -108,7 +109,12 @@ class Server extends GameServer {
       if (message.index >= 0) {
         _gameState.insertReceivedDescription(message.index, message.description);
       }
-      _gameState.loadFromData(message.data);
+      // An official-app snapshot lacks the Swerski keys; restore them so a
+      // client action cannot wipe the host's heart-attack counts.
+      _gameState.loadFromData(preserveSwerskiFields(
+        incoming: message.data,
+        current: _gameState.toString(),
+      ));
       // Set event before commandIndex fires so VLB callbacks see it.
       _gameState.lastEvent.value = GameEvent.fromJsonString(message.eventJson);
       _gameState.commandIndex.value = message.index;
