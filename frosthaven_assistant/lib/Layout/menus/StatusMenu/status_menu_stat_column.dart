@@ -12,9 +12,11 @@ import '../../../Resource/enums.dart';
 import '../../../Resource/settings.dart';
 import '../../../Resource/state/game_state.dart';
 import '../../../Resource/ui_utils.dart';
+import '../../CharacterWidget/kielbasa_icon.dart';
 import '../../counter_button.dart';
 import '../../view_models/status_menu_stat_column_view_model.dart';
 import '../SetLevelMenu/set_level_menu.dart';
+import '../heart_attacks_menu.dart';
 import '../set_character_level_menu.dart';
 import 'status_menu_stackable_condition_buttons.dart';
 
@@ -27,6 +29,14 @@ class StatusMenuStatColumn extends StatelessWidget {
   static const int _kMaxVimthreaderGrEmpower = 5;
   static const int _kMaxLifespeakerEnfeeble = 15;
   static const int _kMaxRuinmawEmpower = 12;
+  static const double _kHeartIconHeight = 14.0;
+  static const double _kHeartGap = 4.0;
+  static const double _kHeartRowHeight = 24.0;
+
+  /// Test handles for the heart-attack entry and its two totals.
+  static const Key heartAttacksKey = Key('status-menu-heart-attacks');
+  static const Key littleTotalKey = Key('status-menu-heart-little');
+  static const Key majorTotalKey = Key('status-menu-heart-major');
 
   const StatusMenuStatColumn({
     super.key,
@@ -352,9 +362,96 @@ class StatusMenuStatColumn extends StatelessWidget {
                             color: Colors.white,
                             shadows: [textShadow(scale)])),
                 ],
-              )
+              ),
+              _heartAttacks(context),
             ],
           );
         });
+  }
+
+  /// Swerski: the hero's little / major heart-attack totals (earlier plus this
+  /// scenario), under the level and used the same way: tap to open its popup.
+  Widget _heartAttacks(BuildContext context) {
+    final c = character;
+    if (!settings.heartAttacks.value ||
+        !isCharacter ||
+        isSummon ||
+        c == null ||
+        GameMethods.isObjectiveOrEscort(c.characterClass)) {
+      return const SizedBox.shrink();
+    }
+    final state = c.characterState;
+    final style = TextStyle(
+        fontSize: kFontSizeSmall * scale,
+        color: Colors.white,
+        shadows: [textShadow(scale)]);
+    Widget total(int value, Key key) => Text('$value', key: key, style: style);
+    Widget kielbasa(bool little) => KielbasaIcon(
+        height: _kHeartIconHeight * scale, recovering: little);
+    // Same grid as the skull / level row above: one cell under each of those
+    // buttons, then the number where the level number starts.
+    final cell = kConditionButtonSize * scale;
+    final iconWidth = _kHeartIconHeight * KielbasaIcon.aspect * scale;
+    final gap = _kHeartGap / 2 * scale;
+    // The little total fits between the two sausages.
+    final littleLeft = (cell + iconWidth) / 2 + gap;
+    final littleWidth = cell - iconWidth - gap * 2;
+    // The menu is not inside a Material, which an InkWell needs.
+    return Material(
+      type: MaterialType.transparency,
+      child: InkWell(
+        key: heartAttacksKey,
+        onTap: () => openDialog(
+          context,
+          HeartAttacksMenu(
+              characterId: c.id, gameState: gameState, settings: settings),
+        ),
+        // As wide as a counter row and short, so the menu barely grows.
+        child: SizedBox(
+          width: (kButtonSize * 2 + kIconSize) * scale,
+          height: _kHeartRowHeight * scale,
+          child: Stack(
+            children: [
+              Positioned(
+                  left: 0,
+                  width: cell,
+                  top: 0,
+                  bottom: 0,
+                  child: Center(child: kielbasa(true))),
+              Positioned(
+                left: littleLeft,
+                width: littleWidth,
+                top: 0,
+                bottom: 0,
+                child: FittedBox(
+                  fit: BoxFit.scaleDown,
+                  alignment: Alignment.centerLeft,
+                  child: total(
+                      state.littleHeartAttacksBefore.value +
+                          state.littleHeartAttacks.value,
+                      littleTotalKey),
+                ),
+              ),
+              Positioned(
+                  left: cell,
+                  width: cell,
+                  top: 0,
+                  bottom: 0,
+                  child: Center(child: kielbasa(false))),
+              Positioned(
+                left: cell * 2,
+                top: 0,
+                bottom: 0,
+                child: Center(
+                  child: total(
+                      state.heartAttacksBefore.value + state.heartAttacks.value,
+                      majorTotalKey),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 }

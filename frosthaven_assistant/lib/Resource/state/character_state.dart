@@ -265,6 +265,14 @@ class CharacterState extends FigureState {
     _littleHeartAttacks.value = value < 0 ? 0 : value;
   }
 
+  void setHeartAttacksBefore(_StateModifier _, int value) {
+    _heartAttacksBefore.value = value < 0 ? 0 : value;
+  }
+
+  void setLittleHeartAttacksBefore(_StateModifier _, int value) {
+    _littleHeartAttacksBefore.value = value < 0 ? 0 : value;
+  }
+
   void addSummon(_StateModifier _, MonsterInstance summon) {
     _summonList.add(summon);
     _notifySummonList();

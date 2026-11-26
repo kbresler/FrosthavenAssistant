@@ -15,6 +15,7 @@ import '../MonsterBox/monster_box.dart';
 import '../attack_mode/attack_mode_controller.dart';
 import '../attack_mode/attack_pick_outline.dart';
 import '../health_wheel_controller.dart';
+import '../menus/heart_attacks_menu.dart';
 import '../view_models/character_view_model.dart';
 import 'character_widget_internal.dart';
 import 'kielbasa_icon.dart';
@@ -212,8 +213,8 @@ class CharacterWidgetState extends State<CharacterWidget> {
               // summons row above it. The kielbasa rows sit in the gap left
               // of the XP/level column, outside the grey filter so they keep
               // their colour on a greyed-out exhausted card; they are
-              // Positioned and inert, so they shift nothing and block
-              // nothing.
+              // Positioned, so they shift nothing; a tap on a tally opens
+              // the editor and any other tap reaches the card.
               AttackPickOutline(
                 ownerId: character.id,
                 figureId: character.id,
@@ -229,14 +230,12 @@ class CharacterWidgetState extends State<CharacterWidget> {
                           getMainListWidth(context) -
                           HeartAttackStat._kXPColumnLeft * scale +
                           HeartAttackStat._kGapToXP * scale,
-                      child: IgnorePointer(
-                        child: HeartAttackStat(
-                          character: character,
-                          scale: scale,
-                          little: true,
-                          gap: statGap,
-                          settings: widget.settings,
-                        ),
+                      child: HeartAttackStat(
+                        character: character,
+                        scale: scale,
+                        little: true,
+                        gap: statGap,
+                        settings: widget.settings,
                       ),
                     ),
                     Positioned(
@@ -245,14 +244,12 @@ class CharacterWidgetState extends State<CharacterWidget> {
                           getMainListWidth(context) -
                           HeartAttackStat._kXPColumnLeft * scale +
                           HeartAttackStat._kGapToXP * scale,
-                      child: IgnorePointer(
-                        child: HeartAttackStat(
-                          character: character,
-                          scale: scale,
-                          little: false,
-                          gap: statGap,
-                          settings: widget.settings,
-                        ),
+                      child: HeartAttackStat(
+                        character: character,
+                        scale: scale,
+                        little: false,
+                        gap: statGap,
+                        settings: widget.settings,
                       ),
                     ),
                   ],
@@ -271,8 +268,8 @@ class CharacterWidgetState extends State<CharacterWidget> {
 /// scenario]`, right-aligned to that column. The little (long-rest) row sits
 /// on the XP row: pale kielbasa, white current count. The major row sits on
 /// the level row: full-colour kielbasa, red current count. Earlier-scenario
-/// counts are grey. Both numbers always show, zero included; the whole row
-/// is drawn only once either number of its kind is above zero.
+/// counts are grey. Both rows and both numbers always show, zero included,
+/// so any hero's tally can be tapped to edit it.
 /// Nothing when the setting is off.
 class HeartAttackStat extends StatelessWidget {
   const HeartAttackStat({
@@ -384,9 +381,6 @@ class HeartAttackStat extends StatelessWidget {
         if (!st.heartAttacks.value) {
           return const SizedBox.shrink();
         }
-        if (before.value == 0 && current.value == 0) {
-          return const SizedBox.shrink();
-        }
         return _row(context, before.value, current.value);
       },
     );
@@ -407,6 +401,22 @@ class HeartAttackStat extends StatelessWidget {
         Shadow(color: dark, offset: Offset(-o, -o)),
       ],
     );
+  }
+
+  /// Tapping a drawn tally opens the editor. While attack mode is picking it
+  /// does what a tap on the card does — pick this hero — so the tally never
+  /// steals a pick. Taps beside the tallies still reach the card's own tap
+  /// (status menu or pick).
+  void _onTallyTap(BuildContext context) {
+    final attack = attackModeController();
+    if (attack.isSelecting) {
+      attack.togglePickCharacter(character.id);
+    } else {
+      openDialog(
+        context,
+        HeartAttacksMenu(characterId: character.id, settings: settings),
+      );
+    }
   }
 
   Widget _row(BuildContext context, int before, int current) {
@@ -437,27 +447,34 @@ class HeartAttackStat extends StatelessWidget {
         child: FittedBox(
           fit: BoxFit.scaleDown,
           alignment: Alignment.centerRight,
-          child: Row(
-            key: little ? littleKey : majorKey,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text('$before', style: numberStyle(Colors.grey)),
-              SizedBox(width: _kGap * scale),
-              KielbasaIcon(
-                height: _kIconHeight * scale,
-                recovering: little,
-                semanticLabel: little
-                    ? l10n.heartAttackLittleBadge(before + current)
-                    : l10n.heartAttackBadge(before + current),
-              ),
-              SizedBox(width: _kGap * scale),
-              Text(
-                '$current',
-                style: little
-                    ? numberStyle(Colors.white)
-                    : _redOutlined(numberStyle(Colors.redAccent)),
-              ),
-            ],
+          // Tap the drawn tally to edit it. Opaque so the number and kielbasa
+          // area wins the hit test; the empty gap beside it stays inert, so
+          // taps there still reach the card (status menu / attack pick).
+          child: GestureDetector(
+            onTap: () => _onTallyTap(context),
+            behavior: HitTestBehavior.opaque,
+            child: Row(
+              key: little ? littleKey : majorKey,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text('$before', style: numberStyle(Colors.grey)),
+                SizedBox(width: _kGap * scale),
+                KielbasaIcon(
+                  height: _kIconHeight * scale,
+                  recovering: little,
+                  semanticLabel: little
+                      ? l10n.heartAttackLittleBadge(before + current)
+                      : l10n.heartAttackBadge(before + current),
+                ),
+                SizedBox(width: _kGap * scale),
+                Text(
+                  '$current',
+                  style: little
+                      ? numberStyle(Colors.white)
+                      : _redOutlined(numberStyle(Colors.redAccent)),
+                ),
+              ],
+            ),
           ),
         ),
       ),

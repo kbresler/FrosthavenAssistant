@@ -343,6 +343,33 @@ class AppLocalizationsTh extends AppLocalizations {
   }
 
   @override
+  String heartAttacksMenuTitle(String hero) {
+    return '$hero: heart attacks';
+  }
+
+  @override
+  String get heartAttacksLittle => 'Little';
+
+  @override
+  String get heartAttacksMajor => 'Major';
+
+  @override
+  String get heartAttacksEarlier => 'Earlier';
+
+  @override
+  String get heartAttacksThisScenario => 'This scenario';
+
+  @override
+  String cmdAdjustHeartAttacks(
+    String hero,
+    String kind,
+    String period,
+    String sign,
+  ) {
+    return '$hero: $kind heart attacks $period ($sign)';
+  }
+
+  @override
   String get attackSeveralMenu => 'Attack several…';
 
   @override

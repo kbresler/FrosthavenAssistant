@@ -647,6 +647,47 @@ abstract class AppLocalizations {
   /// **'{names} each had a little heart attack and are recovering until their turn (long rest).'**
   String heartAttackRecoveringPlural(String names);
 
+  /// No description provided for @heartAttacksMenuTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'{hero}: heart attacks'**
+  String heartAttacksMenuTitle(String hero);
+
+  /// No description provided for @heartAttacksLittle.
+  ///
+  /// In en, this message translates to:
+  /// **'Little'**
+  String get heartAttacksLittle;
+
+  /// No description provided for @heartAttacksMajor.
+  ///
+  /// In en, this message translates to:
+  /// **'Major'**
+  String get heartAttacksMajor;
+
+  /// No description provided for @heartAttacksEarlier.
+  ///
+  /// In en, this message translates to:
+  /// **'Earlier'**
+  String get heartAttacksEarlier;
+
+  /// No description provided for @heartAttacksThisScenario.
+  ///
+  /// In en, this message translates to:
+  /// **'This scenario'**
+  String get heartAttacksThisScenario;
+
+  /// No description provided for @cmdAdjustHeartAttacks.
+  ///
+  /// In en, this message translates to:
+  /// **'{hero}: {kind} heart attacks {period} ({sign})'**
+  String cmdAdjustHeartAttacks(
+    String hero,
+    String kind,
+    String period,
+    String sign,
+  );
+
   /// No description provided for @attackSeveralMenu.
   ///
   /// In en, this message translates to:

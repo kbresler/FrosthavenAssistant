@@ -54,6 +54,9 @@ void main() {
         CharacterWidget(characterId: item.id, key: Key('card-${item.id}')),
   ]))));
 
+  Finder onCard(String id, Finder row) =>
+      find.descendant(of: find.byKey(Key('card-$id')), matching: row);
+
   void hit(String id) {
     ChangeHealthCommand(-1000, id, id, gameState: gs).execute();
   }
@@ -74,18 +77,20 @@ void main() {
     gs.action(SetScenarioCommand('custom', false, gameState: gs));
   }
 
-  testWidgets('a fresh hero shows neither row', (tester) async {
+  testWidgets('a fresh hero shows both rows at zero', (tester) async {
     await tester.pumpWidget(board());
-    expect(littleRow(), findsNothing);
-    expect(majorRow(), findsNothing);
+    for (final row in [littleRow(), majorRow()]) {
+      expect(row, findsOneWidget);
+      expect(
+          tester.widgetList<Text>(rowTexts(row)).map((t) => t.data), ['0', '0']);
+    }
   });
 
-  testWidgets('a major heart attack shows only the major row', (tester) async {
+  testWidgets('a major heart attack counts on the major row', (tester) async {
     await tester.pumpWidget(board());
     hit('Blinkblade');
     await tester.pump();
     expect(majorRow(), findsOneWidget);
-    expect(littleRow(), findsNothing);
     final icon = tester.widget<KielbasaIcon>(rowIcon(majorRow()));
     expect(icon.recovering, isFalse);
     expect(icon.semanticLabel, l10n.heartAttackBadge(1));
@@ -96,14 +101,13 @@ void main() {
     expect(textCodeAt(tester, majorRow(), 1), Colors.redAccent);
   });
 
-  testWidgets('a long rest shows only the little row', (tester) async {
+  testWidgets('a long rest counts on the little row', (tester) async {
     rest('Blinkblade');
     await tester.pumpWidget(board());
     draw();
     // DrawCommand notifies on a 600 ms delay; let it run out.
     await tester.pump(const Duration(milliseconds: 700));
     expect(littleRow(), findsOneWidget);
-    expect(majorRow(), findsNothing);
     final icon = tester.widget<KielbasaIcon>(rowIcon(littleRow()));
     expect(icon.recovering, isTrue);
     expect(icon.semanticLabel, l10n.heartAttackLittleBadge(1));
@@ -268,13 +272,13 @@ void main() {
       addTearDown(tester.view.resetDevicePixelRatio);
       await tester.pumpWidget(board());
       await tester.pump(const Duration(milliseconds: 700));
-      // Its name leaves no gap at any width, so both rows hide on its card;
-      // Blinkblade's short name keeps its own rows (both counts folded
-      // earlier… none here) — Blinkblade shows nothing, counts are 0.
-      expect(littleRow(), findsNothing,
+      // Its name leaves no gap at any width, so both rows hide on its card
+      // (the other hero's short name keeps its own).
+      expect(onCard(spear.id, littleRow()), findsNothing,
           reason: 'no little row behind a long name at $size');
-      expect(majorRow(), findsNothing,
+      expect(onCard(spear.id, majorRow()), findsNothing,
           reason: 'no major row behind a long name at $size');
+      expect(onCard('Blinkblade', majorRow()), findsOneWidget);
     }
   });
 
@@ -320,7 +324,7 @@ void main() {
     rest(objective.id);
     draw();
     await tester.pump(const Duration(milliseconds: 700));
-    expect(littleRow(), findsNothing);
-    expect(majorRow(), findsNothing);
+    expect(onCard(objective.id, littleRow()), findsNothing);
+    expect(onCard(objective.id, majorRow()), findsNothing);
   });
 }
