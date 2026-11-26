@@ -7,6 +7,7 @@ import '../../Resource/state/game_state.dart';
 import '../../Resource/ui_utils.dart';
 import '../menus/numpad_menu.dart';
 import '../view_models/character_widget_internal_view_model.dart';
+import '../view_models/initiative_widget_view_model.dart';
 import 'character_background_widget.dart';
 import 'figure_note_widget.dart';
 import 'character_health_widget.dart';
@@ -81,12 +82,27 @@ class CharacterInternalWidgetState extends State<CharacterWidgetInternal> {
     isCharacter = !_vm.isObjectiveOrEscort;
     if (isCharacter) {
       _initTextFieldController.clear();
+      _showSavedInitiative();
     }
     if (_vm.roundState.index >= 0) {
       // clear on playTurns
       if (_vm.roundState == RoundState.playTurns) {
         CharacterWidgetInternal.localCharacterInitChanges.clear();
       }
+    }
+  }
+
+  /// Swerski: this state starts over when the card is rebuilt (attack mode
+  /// outlining it, a reload, undoing Draw), so put the saved initiative back in
+  /// the field. One hidden from this device is left for InitiativeWidget to
+  /// show as "??".
+  void _showSavedInitiative() {
+    final initiative = widget.character.characterState.initiative.value;
+    final hidden = InitiativeWidgetViewModel(widget.character,
+            gameState: widget.gameState, settings: widget.settings)
+        .isSecret;
+    if (initiative != 0 && !hidden) {
+      _initTextFieldController.text = initiative.toString();
     }
   }
 

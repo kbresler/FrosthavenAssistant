@@ -1,10 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:frosthaven_assistant/Layout/CharacterWidget/character_widget_internal.dart';
 import 'package:frosthaven_assistant/Layout/CharacterWidget/character_widget.dart';
+import 'package:frosthaven_assistant/Layout/attack_mode/attack_mode_controller.dart';
 import 'package:frosthaven_assistant/Layout/menus/StatusMenu/status_menu.dart';
 import 'package:frosthaven_assistant/Resource/commands/add_character_command.dart';
 import 'package:frosthaven_assistant/Resource/commands/draw_command.dart';
 import 'package:frosthaven_assistant/Resource/commands/next_round_command.dart';
+import 'package:frosthaven_assistant/Resource/commands/set_init_command.dart';
 import 'package:frosthaven_assistant/Resource/commands/turn_done_command.dart';
 import 'package:frosthaven_assistant/Resource/game_data.dart';
 import 'package:frosthaven_assistant/Resource/settings.dart';
@@ -206,6 +209,52 @@ void main() {
       expect(d?.color, Colors.tealAccent);
       expect(d?.border, isNull);
       await resetRound(tester);
+    });
+  });
+
+  group('Swerski: saved initiative on a rebuilt card', () {
+    String? fieldText(WidgetTester tester) =>
+        tester.widget<TextField>(find.byType(TextField)).controller?.text;
+
+    void setInit(int value) =>
+        SetInitCommand('Blinkblade', value, gameState: getIt<GameState>())
+            .execute();
+
+    testWidgets('a freshly built card shows it (reload)', (tester) async {
+      setInit(27);
+      await pumpCharacterWidget(tester);
+      expect(fieldText(tester), '27');
+    });
+
+    testWidgets('picking the hero in attack mode keeps it', (tester) async {
+      addTearDown(() => attackModeController().end());
+      await pumpCharacterWidget(tester);
+      await tester.enterText(find.byType(TextField), '27');
+      await tester.pump();
+
+      attackModeController().startSelecting();
+      attackModeController().togglePickCharacter('Blinkblade');
+      await tester.pumpAndSettle();
+      expect(fieldText(tester), '27');
+
+      attackModeController().togglePickCharacter('Blinkblade');
+      await tester.pumpAndSettle();
+      expect(fieldText(tester), '27');
+    });
+
+    testWidgets('stays empty when no initiative is set', (tester) async {
+      await pumpCharacterWidget(tester);
+      expect(fieldText(tester), isEmpty);
+    });
+
+    testWidgets('stays hidden when it came from another device',
+        (tester) async {
+      setInit(27);
+      getIt<Settings>().server.value = true;
+      CharacterWidgetInternal.localCharacterInitChanges.clear();
+      addTearDown(() => getIt<Settings>().server.value = false);
+      await pumpCharacterWidget(tester);
+      expect(fieldText(tester), '??');
     });
   });
 }
