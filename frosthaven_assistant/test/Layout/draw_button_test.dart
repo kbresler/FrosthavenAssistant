@@ -6,6 +6,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:frosthaven_assistant/Layout/draw_button.dart';
 import 'package:frosthaven_assistant/Resource/commands/add_character_command.dart';
 import 'package:frosthaven_assistant/Resource/enums.dart';
+import 'package:frosthaven_assistant/Resource/message_panel.dart';
 import 'package:frosthaven_assistant/Resource/state/game_state.dart';
 import 'package:frosthaven_assistant/l10n/app_localizations.dart';
 import 'package:frosthaven_assistant/services/service_locator.dart';
@@ -74,7 +75,7 @@ void main() {
       'tapping with no characters in chooseInitiative does not crash',
       (WidgetTester tester) async {
         await pumpButton(tester);
-        // No characters → showToast is called, but does not throw
+        // No characters → the blocked message goes on the message panel.
         await tester.tap(find.byType(TextButton));
         await tester.pump(const Duration(milliseconds: 300));
         // Blocked: no characters, so state is unchanged
@@ -82,6 +83,7 @@ void main() {
           getIt<GameState>().roundState.value,
           RoundState.chooseInitiative,
         );
+        MessagePanel.instance.cancelTimers();
       },
     );
 

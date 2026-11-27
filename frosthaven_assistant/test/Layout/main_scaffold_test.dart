@@ -6,6 +6,7 @@ import 'package:frosthaven_assistant/Layout/main_scaffold.dart';
 import 'package:frosthaven_assistant/Layout/menus/main_menu.dart';
 import 'package:frosthaven_assistant/Layout/section_button.dart';
 import 'package:frosthaven_assistant/Resource/commands/set_scenario_command.dart';
+import 'package:frosthaven_assistant/Resource/message_panel.dart';
 import 'package:frosthaven_assistant/Layout/top_bar.dart';
 import 'package:frosthaven_assistant/Resource/state/game_state.dart';
 import 'package:frosthaven_assistant/services/service_locator.dart';
@@ -20,9 +21,11 @@ void main() {
   });
 
   setUp(() {
+    MessagePanel.reset();
     getIt<GameState>().clearList();
     loading.value = false;
   });
+  tearDown(() => MessagePanel.reset());
 
   Future<void> pumpScaffold(WidgetTester tester) async {
     final originalOnError = FlutterError.onError;

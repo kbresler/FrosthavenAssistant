@@ -4,7 +4,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:frosthaven_assistant/Layout/main_scaffold.dart';
+import 'package:frosthaven_assistant/Layout/message_panel.dart';
 import 'package:frosthaven_assistant/Resource/commands/add_character_command.dart';
+import 'package:frosthaven_assistant/Resource/message_panel.dart';
 import 'package:frosthaven_assistant/Resource/state/game_state.dart';
 import 'package:frosthaven_assistant/l10n/app_localizations.dart';
 import 'package:frosthaven_assistant/services/network/network.dart';
@@ -22,11 +24,13 @@ void main() {
   late Network network;
 
   setUp(() {
+    MessagePanel.reset();
     gameState = getIt<GameState>();
     network = getIt<Network>();
     gameState.clearList();
     network.superFanJoined.value = null;
   });
+  tearDown(() => MessagePanel.reset());
 
   Future<void> pumpBanner(WidgetTester tester) async {
     final originalOnError = FlutterError.onError;
@@ -40,7 +44,15 @@ void main() {
           GlobalWidgetsLocalizations.delegate,
         ],
         supportedLocales: const [Locale('en')],
-        home: const Scaffold(body: SuperFanJoinBannerNotifier()),
+        // The banner arrives as a panel entry: the notifier needs the panel
+        // on screen, as in MainScaffoldBody.
+        home: const Scaffold(
+          body: Stack(children: [
+            SizedBox.expand(),
+            SuperFanJoinBannerNotifier(),
+            MessagePanelNotifier(),
+          ]),
+        ),
       ),
     );
     await tester.pump();
@@ -63,6 +75,7 @@ void main() {
         findsOneWidget);
     // Consumed, so the next arrival can banner again.
     expect(network.superFanJoined.value, isNull);
+    MessagePanel.instance.cancelTimers();
   });
 
   testWidgets('nothing played means the table is on the SuperNetwork',
@@ -76,6 +89,7 @@ void main() {
     expect(find.text('Da Bears! The table is on the SuperNetwork'),
         findsOneWidget);
     expect(network.superFanJoined.value, isNull);
+    MessagePanel.instance.cancelTimers();
   });
 
   testWidgets('a character that left the game still shows its id',
@@ -89,5 +103,6 @@ void main() {
     expect(
         find.text("Da Bears! gone@7's phone is on the SuperNetwork"),
         findsOneWidget);
+    MessagePanel.instance.cancelTimers();
   });
 }

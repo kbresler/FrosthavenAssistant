@@ -108,7 +108,7 @@ void main() {
     });
   });
 
-  // ── openDialogOld / openDialog / createToastContent ──────────────────────
+  // ── openDialogOld / openDialog ───────────────────────────────────────────
 
   group('dialog and toast widget functions', () {
     testWidgets('openDialogOld opens a dialog without throwing',
@@ -122,32 +122,6 @@ void main() {
       await tester.tap(find.text('tap'));
       await tester.pumpAndSettle();
       expect(find.text('old dialog'), findsOneWidget);
-    });
-
-    testWidgets('createToastContent returns a GestureDetector', (tester) async {
-      late Widget toast;
-      await tester.pumpWidget(_l10nApp(Builder(
-        builder: (context) {
-          toast = createToastContent(context, 'some toast text');
-          return const SizedBox();
-        },
-      )));
-      expect(toast, isA<GestureDetector>());
-    });
-
-    testWidgets('showToast does not throw when context is mounted',
-        (tester) async {
-      await tester.pumpWidget(_l10nApp(Scaffold(
-        body: Builder(
-          builder: (context) => TextButton(
-            onPressed: () => showToast(context, 'test toast'),
-            child: const Text('tap'),
-          ),
-        ),
-      )));
-      await tester.tap(find.text('tap'));
-      await tester.pump();
-      expect(find.text('tap'), findsOneWidget);
     });
 
     testWidgets('rebuildAllChildren does not throw', (tester) async {
@@ -178,74 +152,7 @@ void main() {
       expect(feedback, isNotNull);
     });
 
-    testWidgets('message banner is parchment by default (Swerski)',
-        (tester) async {
-      expect(getIt<Settings>().gameStyleMessages.value, isTrue);
-      await tester.pumpWidget(_l10nApp(Scaffold(
-        body: Builder(
-          builder: (context) => TextButton(
-            onPressed: () => showToast(context, 'banner'),
-            child: const Text('tap'),
-          ),
-        ),
-      )));
-      await tester.tap(find.text('tap'));
-      await tester.pump();
-      final bar = tester.widget<SnackBar>(find.byType(SnackBar));
-      expect(bar.behavior, SnackBarBehavior.floating);
-      expect(bar.backgroundColor, isNot(Colors.teal));
-    });
-
-    testWidgets('message banner is the official teal bar when turned off',
-        (tester) async {
-      getIt<Settings>().gameStyleMessages.value = false;
-      addTearDown(() => getIt<Settings>().gameStyleMessages.value = true);
-      await tester.pumpWidget(_l10nApp(Scaffold(
-        body: Builder(
-          builder: (context) => TextButton(
-            onPressed: () => showToast(context, 'banner'),
-            child: const Text('tap'),
-          ),
-        ),
-      )));
-      await tester.tap(find.text('tap'));
-      await tester.pump();
-      final bar = tester.widget<SnackBar>(find.byType(SnackBar));
-      expect(bar.backgroundColor, Colors.teal);
-    });
-
-    testWidgets('showToastSticky does not throw when context is mounted',
-        (tester) async {
-      await tester.pumpWidget(_l10nApp(Scaffold(
-        body: Builder(
-          builder: (context) => TextButton(
-            onPressed: () => showToastSticky(context, 'sticky toast'),
-            child: const Text('tap'),
-          ),
-        ),
-      )));
-      await tester.tap(find.text('tap'));
-      await tester.pump();
-      expect(find.text('tap'), findsOneWidget);
-    });
-
-    testWidgets('showErrorToastStickyWithRetry does not throw', (tester) async {
-      await tester.pumpWidget(_l10nApp(Scaffold(
-        body: Builder(
-          builder: (context) => TextButton(
-            onPressed: () =>
-                showErrorToastStickyWithRetry(context, 'error msg', () {}),
-            child: const Text('tap'),
-          ),
-        ),
-      )));
-      await tester.tap(find.text('tap'));
-      await tester.pump();
-      expect(find.text('tap'), findsOneWidget);
-    });
-
-    testWidgets(
-        'openDialogWithDismissOption with dismissible=false opens dialog',
+    testWidgets('openDialogWithDismissOption with dismissible=false opens dialog',
         (tester) async {
       await tester.pumpWidget(_l10nApp(Builder(
         builder: (context) => TextButton(

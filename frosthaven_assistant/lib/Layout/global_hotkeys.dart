@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:frosthaven_assistant/Resource/enums.dart';
+import 'package:frosthaven_assistant/Resource/message_panel.dart';
 import 'package:frosthaven_assistant/Resource/state/game_state.dart';
-import 'package:frosthaven_assistant/Resource/ui_utils.dart';
 
 import 'view_models/global_hotkeys_view_model.dart';
 
@@ -61,7 +61,9 @@ class GlobalHotkeys extends StatelessWidget {
           SingleActivator(LogicalKeyboardKey.space),
         ): () {
           final msg = vm.invokeDrawOrNextRound();
-          if (msg != null) showToast(context, msg);
+          if (msg != null) {
+            MessagePanel.instance.add(MessageEntry(MessageKind.timed, msg));
+          }
         },
         const _NoTextFieldActivator(
           SingleActivator(LogicalKeyboardKey.digit1),

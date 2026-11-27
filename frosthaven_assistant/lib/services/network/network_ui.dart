@@ -1,10 +1,10 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:frosthaven_assistant/Resource/message_panel.dart';
 import 'package:frosthaven_assistant/Resource/settings.dart';
 import 'package:frosthaven_assistant/services/network/client.dart';
 
-import '../../Resource/ui_utils.dart';
 import '../service_locator.dart';
 import 'network.dart';
 
@@ -22,27 +22,29 @@ class NetworkUI extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    //dummy ui to get context to make toasts.
+    //dummy ui to react to network messages.
     return ValueListenableBuilder<String>(
         valueListenable: _network.networkMessage,
         builder: (context, value, child) {
           Future.delayed(const Duration(milliseconds: 200), () {
             String message = _network.networkMessage.value;
             if (message != "") {
-              if (context.mounted && _network.networkMessageIsError.value) {
-                showErrorToastStickyWithRetry(
-                    context, _network.networkMessage.value, () {
-                  if (_settings.client.value != ClientState.connected &&
-                      _settings.lastKnownConnection != "") {
-                    _settings.client.value = ClientState.connecting;
-                    unawaited(_client.connect(_settings.lastKnownConnection));
-                    _settings.saveToDisk();
-                  }
-                });
+              if (_network.networkMessageIsError.value) {
+                MessagePanel.instance.add(MessageEntry(
+                    MessageKind.error,
+                    message,
+                    onRetry: () {
+                      if (_settings.client.value != ClientState.connected &&
+                          _settings.lastKnownConnection != "") {
+                        _settings.client.value = ClientState.connecting;
+                        unawaited(
+                            _client.connect(_settings.lastKnownConnection));
+                        _settings.saveToDisk();
+                      }
+                    }));
               } else {
-                if (context.mounted) {
-                  showToast(context, _network.networkMessage.value);
-                }
+                MessagePanel.instance
+                    .add(MessageEntry(MessageKind.timed, message));
               }
               _network.networkMessageIsError.value = false;
               _network.networkMessage.value = "";

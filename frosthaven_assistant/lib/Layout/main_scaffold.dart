@@ -1,15 +1,13 @@
-import 'dart:async';
-
 import 'package:flutter/material.dart';
 import 'package:frosthaven_assistant/Layout/ModifierDeckWidget/modifier_deck_widget.dart';
 import 'package:frosthaven_assistant/Layout/background.dart';
 import 'package:frosthaven_assistant/Layout/top_bar.dart';
 import 'package:frosthaven_assistant/Resource/app_constants.dart';
+import 'package:frosthaven_assistant/Resource/message_panel.dart';
 import 'package:frosthaven_assistant/Resource/state/game_state.dart';
 
 import '../Model/campaign.dart';
 import '../Model/room.dart';
-import '../Resource/commands/command_l10n.dart';
 import '../Resource/game_data.dart';
 import '../Resource/game_methods.dart';
 import '../Resource/scaling.dart';
@@ -32,6 +30,7 @@ import 'empty_board_prompt.dart';
 import 'menus/AutoAddStandeeMenu/auto_add_standee_menu.dart';
 import 'menus/main_menu.dart';
 import 'menus/super_fan_choice_menu.dart';
+import 'message_panel.dart';
 import 'view_models/character_amds_view_model.dart';
 import 'view_models/main_scaffold_view_model.dart';
 
@@ -65,114 +64,111 @@ class MainScaffold extends StatelessWidget {
   }
 }
 
+/// Swerski: the bridge between the saved `toastMessage` and the message
+/// panel: the wound text joins the panel as a wound entry, anything else as
+/// the reminder; the game clearing the message (`''` at next round, a new
+/// scenario, an Undo) takes both entries off; and when the panel drops a
+/// wound or the reminder, `toastMessage` is set to what the panel still
+/// shows for the game — the reminder on screen, or `''`.
 class ToastNotifier extends StatefulWidget {
-  static const int _kWoundToastSeconds = 6;
-
-  const ToastNotifier({super.key, this.gameState});
+  const ToastNotifier({super.key, this.gameState, this.panel});
 
   // injected for testing
   final GameState? gameState;
+  final MessagePanel? panel;
 
   @override
   State<ToastNotifier> createState() => _ToastNotifierState();
 }
 
 class _ToastNotifierState extends State<ToastNotifier> {
-  /// Bumped per show attempt: a wound timer from a replaced or re-queued
-  /// message must not clear the bar.
-  int _showSeq = 0;
-
-  /// The running wound self-clear, cancelled on dispose so a late-shown
-  /// wound cannot outlive the widget.
-  Timer? _woundTimer;
+  /// Set around the bridge's own write-back so the listener below ignores
+  /// it: clearing the message after a tapped reminder must not sync the
+  /// panel back and take a still-shown wound with it.
+  bool _writingBack = false;
 
   GameState get _gs => widget.gameState ?? getIt<GameState>();
-
-  @override
-  void dispose() {
-    _showSeq++;
-    _woundTimer?.cancel();
-    heartAttackLineShown.removeListener(_lineGone);
-    super.dispose();
-  }
+  MessagePanel get _panel => widget.panel ?? MessagePanel.instance;
 
   @override
   void initState() {
     super.initState();
-    // Swerski: when the heart-attack line lets go of the bar, show whatever
-    // message waited for it.
-    heartAttackLineShown.addListener(_lineGone);
-  }
-
-  void _lineGone() {
-    if (heartAttackLineShown.value != null || !mounted) return;
-    Future.delayed(const Duration(milliseconds: 200), () {
-      if (!mounted) return;
-      final message = _gs.toastMessage.value;
-      if (message != "") _show(message);
+    _panel.onRemoved = _onPanelRemoved;
+    // Swerski: every game change lands on the panel as it happens — a
+    // build-triggered sync would miss values that come and go within one
+    // frame, like a battle-goal reminder cleared and replaced by a wound.
+    _gs.toastMessage.addListener(_onToastMessage);
+    // Swerski: a reminder already in the message when the panel first
+    // appears is shown.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _sync(_gs.toastMessage.value);
     });
   }
 
-  void _show(String message) {
-    if (heartAttackLineShown.value != null) return; // the line has the bar
-    final int seq = ++_showSeq;
-    ScaffoldMessenger.of(context).removeCurrentSnackBar();
-    showToastSticky(context, message, clearOnDismiss: () => _showSeq == seq);
-    // Wound messages are short-lived, also when undo or a network update
-    // brings an old one back. The seconds count from when the wound shows.
-    if (message.startsWith(commandL10n.toastWoundDamage(''))) {
-      _woundTimer = Timer(const Duration(seconds: ToastNotifier._kWoundToastSeconds), () {
-        if (!mounted || _showSeq != seq) return;
-        if (_gs.toastMessage.value == message) {
-          GameUtilMethods.setToastMessage('', gameState: _gs);
-        }
-      });
+  @override
+  void dispose() {
+    _gs.toastMessage.removeListener(_onToastMessage);
+    if (_panel.onRemoved == _onPanelRemoved) _panel.onRemoved = null;
+    super.dispose();
+  }
+
+  void _onToastMessage() {
+    if (_writingBack) return; // the panel's own echo, already applied
+    _sync(_gs.toastMessage.value);
+  }
+
+  /// Writes back only when the removed entry is what the game holds: with a
+  /// wound current, tapping the reminder beside it must not touch the
+  /// wound's message.
+  void _onPanelRemoved(MessageEntry entry, bool timedOut) {
+    if (entry.kind != MessageKind.wound &&
+        entry.kind != MessageKind.reminder) {
+      return;
     }
+    if (_gs.toastMessage.value != entry.text) return; // the game moved on
+    final shown = _panel.entries.where((e) => e.kind == MessageKind.reminder);
+    _writingBack = true;
+    GameUtilMethods.setToastMessage(
+        shown.isEmpty ? '' : shown.first.text,
+        gameState: _gs);
+    _writingBack = false;
+  }
+
+  void _sync(String value) {
+    if (value.isEmpty) {
+      _panel.removeSilently(MessageKind.reminder);
+      _panel.removeSilently(MessageKind.wound);
+      return;
+    }
+    _panel.add(isWoundMessage(value)
+        ? MessageEntry(MessageKind.wound, value)
+        : MessageEntry(MessageKind.reminder, value));
   }
 
   @override
   Widget build(BuildContext context) {
-    return ValueListenableBuilder<String>(
-        valueListenable: _gs.toastMessage,
-        builder: (context, value, child) {
-          final messenger = ScaffoldMessenger.of(context);
-          Future.delayed(const Duration(milliseconds: 200), () {
-            if (!mounted) return;
-            final message = _gs.toastMessage.value;
-            if (message != "") {
-              // Swerski: the newest message replaces the one on screen
-              // instead of queueing behind a sticky message forever — but a
-              // heart-attack line on the bar gets shown first, and this one
-              // waits for it.
-              _show(message);
-            } else if (heartAttackLineShown.value == null) {
-              // Clearing the message must not wipe a line off the bar.
-              messenger.clearSnackBars();
-            }
-          });
-
-          return const SizedBox(
-            width: 0,
-            height: 0,
-          );
-        });
+    return const SizedBox(
+      width: 0,
+      height: 0,
+    );
   }
 }
 
-/// Swerski: shows a heart-attack reply line as a single passing toast, then
-/// clears it. Reads the transient (non-synced, non-undoable) notifier the
-/// health command sets on the device that applied the change. The line takes
-/// the message bar from any sticky message, which shows again once the line
-/// is gone (see [ToastNotifier]).
+/// Swerski: shows a heart-attack reply line on the message panel as a
+/// passing entry, then clears the notifier. Reads the transient (non-synced,
+/// non-undoable) notifier the health command sets on the device that applied
+/// the change.
 class HeartAttackToastNotifier extends StatelessWidget {
-  const HeartAttackToastNotifier({super.key, this.gameState});
+  const HeartAttackToastNotifier({super.key, this.gameState, this.panel});
 
   // injected for testing
   final GameState? gameState;
+  final MessagePanel? panel;
 
   @override
   Widget build(BuildContext context) {
     final gameState = this.gameState ?? getIt<GameState>();
+    final panel = this.panel ?? MessagePanel.instance;
     return ValueListenableBuilder<String>(
         valueListenable: gameState.heartAttackToast,
         builder: (context, message, child) {
@@ -180,7 +176,7 @@ class HeartAttackToastNotifier extends StatelessWidget {
             WidgetsBinding.instance.addPostFrameCallback((_) {
               // Clear before showing so the same line can fire again later.
               gameState.heartAttackToast.value = "";
-              if (context.mounted) _showLine(context, message);
+              panel.add(MessageEntry(MessageKind.line, message));
             });
           }
           return const SizedBox(
@@ -188,24 +184,6 @@ class HeartAttackToastNotifier extends StatelessWidget {
             height: 0,
           );
         });
-  }
-
-  void _showLine(BuildContext context, String line) {
-    // Always take the bar, whatever is on it: a sticky message (a wound, a
-    // reminder, even the day-long network error toast) must never queue the
-    // line behind it. [showToastSticky] callers see heartAttackLineShown set
-    // first, so they know this removal is not their message going away.
-    heartAttackLineCount++;
-    heartAttackLineShown.value = line;
-    final int seq = heartAttackLineCount;
-    ScaffoldMessenger.of(context).removeCurrentSnackBar();
-    showToast(context, line)?.closed.whenComplete(() {
-      // Only this line's own close lets go: a newer line that already took
-      // the bar must not be cleared by this one's dismissal.
-      if (heartAttackLineCount == seq && heartAttackLineShown.value == line) {
-        heartAttackLineShown.value = null;
-      }
-    });
   }
 }
 
@@ -260,7 +238,7 @@ class SuperFanChoiceDialogTrigger extends StatelessWidget {
   }
 }
 
-/// Swerski: a one-passing toast when a device joins the SuperNetwork:
+/// Swerski: a passing panel entry when a device joins the SuperNetwork:
 /// "Da Bears! Hatchet's phone is on the SuperNetwork", or "The table" when it
 /// plays nothing. Reads the transient announcement the host sets for itself
 /// and the client sets from the host's `joined` message.
@@ -289,8 +267,8 @@ class SuperFanJoinBannerNotifier extends StatelessWidget {
               final text = names.isEmpty
                   ? l10n.superFanBannerTable
                   : l10n.superFanBannerPhone(names.join(' & '));
-              ScaffoldMessenger.of(context).removeCurrentSnackBar();
-              showToast(context, text);
+              MessagePanel.instance
+                  .add(MessageEntry(MessageKind.banner, text));
             });
           }
           return const SizedBox(width: 0, height: 0);
@@ -475,7 +453,10 @@ class MainScaffoldBody extends StatelessWidget {
                                     ])));
                               });
                         });
-                  })
+                  }),
+              // Swerski: drawn last, above the deck corners: messages must
+              // never hide under the decks, and only they take taps.
+              const MessagePanelNotifier()
             ],
           );
         });

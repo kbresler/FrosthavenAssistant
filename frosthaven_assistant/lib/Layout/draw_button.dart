@@ -5,6 +5,7 @@ import 'package:frosthaven_assistant/l10n/app_localizations.dart';
 
 import '../Resource/app_constants.dart';
 import '../Resource/enums.dart';
+import '../Resource/message_panel.dart';
 import '../Resource/state/game_state.dart';
 import '../Resource/ui_utils.dart';
 import 'view_models/draw_button_view_model.dart';
@@ -75,7 +76,8 @@ class DrawButtonState extends State<DrawButton> {
   void _onPressed() {
     final blockedMessage = _vm.runAction();
     if (blockedMessage != null) {
-      showToast(context, blockedMessage);
+      MessagePanel.instance
+          .add(MessageEntry(MessageKind.timed, blockedMessage));
     }
   }
 

@@ -2,7 +2,6 @@ import '../../services/service_locator.dart';
 import '../enums.dart';
 import '../settings.dart';
 import '../state/game_state.dart';
-import '../ui_utils.dart';
 import 'change_stat_commands/change_health_command.dart';
 import 'command_l10n.dart';
 import 'remove_condition_command.dart';
@@ -18,7 +17,6 @@ import 'remove_condition_command.dart';
 /// as usual, because the whole command is one undo step.
 mixin TurnStartWounds on Command {
   static const int _kMaxPasses = 20;
-  static const int _kToastSeconds = 5;
 
   GameState get turnGameState;
 
@@ -82,41 +80,13 @@ mixin TurnStartWounds on Command {
       }
     }
     if (wounded.isNotEmpty) {
-      TurnStartWounds.showWoundMessage(turnGameState,
-          commandL10n.toastWoundDamage(wounded.join(', ')));
+      // Swerski: the wound text goes on the message panel through the
+      // game-state message (the panel gives it its own six seconds and keeps
+      // any reminder beside it).
+      GameUtilMethods.setToastMessage(
+          commandL10n.toastWoundDamage(wounded.join(', ')),
+          gameState: turnGameState);
     }
-  }
-
-  /// Sets the wound [message] on the message bar and schedules the hand-back
-  /// to what the bar showed before. Toasts stay up until cleared; after a
-  /// few seconds the bar goes back to whatever it showed before (e.g. a
-  /// scenario reminder), unless something else replaced our message. While
-  /// a heart-attack line holds the bar, or showed during the count-down,
-  /// the seconds start anew once it is gone; without a line this fires
-  /// exactly [_kToastSeconds] later — no widgets needed either way.
-  static void showWoundMessage(GameState gs, String message) {
-    // Don't bring back an older wound message, only other messages.
-    final woundPrefix = commandL10n.toastWoundDamage('');
-    final previous = gs.toastMessage.value.startsWith(woundPrefix)
-        ? ''
-        : gs.toastMessage.value;
-    GameUtilMethods.setToastMessage(message, gameState: gs);
-    void arm() {
-      final int linesAtArm = heartAttackLineCount;
-      Future.delayed(const Duration(seconds: _kToastSeconds), () {
-        if (gs.toastMessage.value != message) return; // replaced or cleared
-        if (heartAttackLineShown.value != null ||
-            heartAttackLineCount != linesAtArm) {
-          // A line holds the bar, or showed while we counted down: the wound
-          // has not had its seconds yet. Count them anew.
-          arm();
-          return;
-        }
-        GameUtilMethods.setToastMessage(previous, gameState: gs);
-      });
-    }
-
-    arm();
   }
 
   List<_WoundHit> _collectStartedTurns(

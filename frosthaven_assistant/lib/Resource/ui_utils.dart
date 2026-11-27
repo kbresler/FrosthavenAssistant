@@ -5,10 +5,8 @@ import 'package:frosthaven_assistant/Layout/theme.dart';
 import 'package:frosthaven_assistant/Resource/app_constants.dart';
 import 'package:frosthaven_assistant/Resource/enums.dart';
 import 'package:frosthaven_assistant/Resource/settings.dart';
-import 'package:frosthaven_assistant/l10n/app_localizations.dart';
 
 import '../services/service_locator.dart';
-import 'state/game_state.dart';
 
 void openDialogOld(BuildContext context, Widget widget) {
   showDialog(context: context, builder: (BuildContext context) => widget);
@@ -268,17 +266,6 @@ bool hasGHVersion(String name) {
   return _ghVersionSet.contains(name);
 }
 
-const TextStyle toastTextStyle =
-    TextStyle(fontFamily: "Markazi", fontSize: kFontSizeToast);
-GestureDetector createToastContent(BuildContext context, String text) { // ignore: avoid-returning-widgets, top-level utility function for toast content
-  return GestureDetector(
-    onTap: () {
-      ScaffoldMessenger.of(context).hideCurrentSnackBar();
-    },
-    child: Text(text, style: toastTextStyle),
-  );
-}
-
 // Swerski: one "your turn" look for characters, monsters and standees
 // (Settings.turnGlow).
 const Color kTurnColor = Colors.lightGreenAccent;
@@ -296,123 +283,3 @@ BoxShadow turnGlowShadow(double scale) => BoxShadow(
       blurRadius: _kTurnGlowBlur * scale,
       spreadRadius: _kTurnGlowSpread * scale,
     );
-
-// Swerski: game-style message banner (Settings.gameStyleMessages).
-const Color _kBannerParchment = Color(0xFFF2E6C9);
-const Color _kBannerBorder = Color(0xFF7A5A2E);
-const Color _kBannerText = Color(0xFF3B2A14);
-const double _kBannerMaxWidth = 640.0;
-const double _kBannerRadius = 8.0;
-const double _kBannerBorderWidth = 2.0;
-const double _kBannerFontSize = 22.0;
-const EdgeInsets _kBannerPadding =
-    EdgeInsets.symmetric(horizontal: 16, vertical: 6);
-
-bool _useGameStyleMessages() =>
-    getIt.isRegistered<Settings>() &&
-    getIt<Settings>().gameStyleMessages.value;
-
-SnackBar _toastSnackBar(BuildContext context, String text,
-    {Duration duration = const Duration(milliseconds: 4000)}) {
-  if (!_useGameStyleMessages()) {
-    return SnackBar(
-      duration: duration,
-      backgroundColor: Colors.teal,
-      content: createToastContent(context, text),
-    );
-  }
-  final screenWidth = MediaQuery.of(context).size.width;
-  final sideMargin = screenWidth > _kBannerMaxWidth
-      ? (screenWidth - _kBannerMaxWidth) / 2
-      : 8.0;
-  return SnackBar(
-    duration: duration,
-    behavior: SnackBarBehavior.floating,
-    margin: EdgeInsets.only(left: sideMargin, right: sideMargin, bottom: 8),
-    padding: _kBannerPadding,
-    elevation: 4,
-    backgroundColor: _kBannerParchment,
-    shape: RoundedRectangleBorder(
-      borderRadius: BorderRadius.circular(_kBannerRadius),
-      side: const BorderSide(
-          color: _kBannerBorder, width: _kBannerBorderWidth),
-    ),
-    content: GestureDetector(
-      onTap: () {
-        ScaffoldMessenger.of(context).hideCurrentSnackBar();
-      },
-      child: Text(text,
-          textAlign: TextAlign.center,
-          style: const TextStyle(
-              fontFamily: "Markazi",
-              fontSize: _kBannerFontSize,
-              height: 1.1,
-              color: _kBannerText)),
-    ),
-  );
-}
-
-ScaffoldFeatureController<SnackBar, SnackBarClosedReason>? showToast(
-    BuildContext context, String text) {
-  if (!context.mounted) return null;
-  return ScaffoldMessenger.of(context).showSnackBar(_toastSnackBar(context, text));
-}
-
-/// Swerski: the heart-attack line currently holding the message bar. While
-/// it is up, [showToastSticky] callers hold back: the line gets the slot
-/// first, the message waits. UI-only — never game state.
-final ValueNotifier<String?> heartAttackLineShown = ValueNotifier<String?>(null);
-
-/// Swerski: how many heart-attack lines have been shown. A wound message
-/// that waited behind a line re-arms its visible seconds when this moves;
-/// a line's own close callback checks it so a newer line is never wiped by
-/// the old line's dismissal.
-int heartAttackLineCount = 0;
-
-Future<void> showToastSticky(BuildContext context, String text,
-    {GameState? gameState, bool Function()? clearOnDismiss}) async {
-  if (context.mounted) {
-    await ScaffoldMessenger.of(context)
-        .showSnackBar(_toastSnackBar(context, text,
-            duration: const Duration(days: 1)))
-        .closed;
-    // A dismissal while a heart-attack line holds the bar is the line taking
-    // the slot, not the message going away: it stays for later.
-    final clears = heartAttackLineShown.value == null &&
-        (clearOnDismiss == null || clearOnDismiss());
-    if (clears && (gameState ?? getIt<GameState>()).toastMessage.value == text) {
-      GameUtilMethods.setToastMessage("");
-    }
-  }
-}
-
-Future<void> showErrorToastStickyWithRetry(
-    BuildContext context, String text, Function() retry,
-    {GameState? gameState}) async {
-  ScaffoldMessenger.of(context).clearSnackBars();
-  await ScaffoldMessenger.of(context)
-      .showSnackBar(SnackBar(
-        duration: const Duration(days: 1),
-        backgroundColor: Colors.redAccent,
-        content: Row(
-          children: [
-            Expanded(child: createToastContent(context, text)),
-            TextButton(
-                onPressed: () {
-                  retry();
-                  ScaffoldMessenger.of(context).hideCurrentSnackBar();
-                },
-                child: Text(AppLocalizations.of(context)!.retry,
-                    style: const TextStyle(
-                        fontFamily: "Markazi",
-                        fontSize: kFontSizeToast,
-                        color: Colors.white,
-                        fontWeight: FontWeight.bold))),
-          ],
-        ),
-      ))
-      .closed;
-  if ((gameState ?? getIt<GameState>()).toastMessage.value == text) {
-    GameUtilMethods.setToastMessage("");
-  }
-}
