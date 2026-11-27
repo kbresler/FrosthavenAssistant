@@ -11,6 +11,10 @@ class Network {
   final networkMessage = ValueNotifier<String>("");
   final networkMessageIsError = ValueNotifier<bool>(false);
 
+  /// Whether the host answered this connection's Swerski greeting with its
+  /// ack. False until the ack arrives, again false on disconnect.
+  final hostGreeted = ValueNotifier<bool>(false);
+
   bool appInBackground = false;
   bool clientDisconnectedWhileInBackground = false;
 

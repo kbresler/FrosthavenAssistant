@@ -14,6 +14,7 @@ import '../../Resource/state/game_state.dart';
 import '../../l10n/app_localizations.dart';
 import '../service_locator.dart';
 import 'connection.dart';
+import 'superfan/greeting.dart';
 
 class Client {
   String _leftOverMessage = "";
@@ -63,6 +64,7 @@ class Client {
     _serverResponsive = true;
     _missedPongs = 0;
     _connectCancelled = false;
+    _network.hostGreeted.value = false;
     _pingGeneration++;
     // Bumping the generation retires any chain from a previous connection, so
     // the old chain can no longer stand in for this one — clear the re-entrancy
@@ -86,6 +88,11 @@ class Client {
           }
           _settings.saveToDisk();
           _send("init protocolVersion:${GameServer.protocolVersion}");
+          _send(SwerskiGreeting.encode(
+            id: _settings.deviceId,
+            name: _settings.deviceName.value,
+            plays: _settings.devicePlays.value,
+          ));
           _sendPing();
           _listen();
         },
@@ -219,6 +226,15 @@ class Client {
   }
 
   void _handleContent(String message) {
+    if (SwerskiGreeting.isSwerskiMessage(message)) {
+      // The host's ack to our greeting; any other Swerski traffic (a greeting
+      // aimed at us, a future version) is protocol noise we pass over.
+      if (SwerskiGreeting.isAck(message)) {
+        _network.hostGreeted.value = true;
+      }
+      return;
+    }
+
     if (message.startsWith("Mismatch:")) {
       message = message.substring("Mismatch:".length);
       _setNetworkMessage(_l10n.stateMismatch);
@@ -274,6 +290,7 @@ class Client {
     _pinging = false;
     _pingGeneration++;
     _missedPongs = 0;
+    _network.hostGreeted.value = false;
 
     if (_network.appInBackground) {
       _network.clientDisconnectedWhileInBackground = true;
