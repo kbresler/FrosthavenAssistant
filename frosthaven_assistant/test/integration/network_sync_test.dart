@@ -16,6 +16,7 @@ import 'package:frosthaven_assistant/services/network/communication.dart';
 import 'package:frosthaven_assistant/services/network/connection.dart';
 import 'package:frosthaven_assistant/services/network/network.dart';
 import 'package:frosthaven_assistant/services/network/server.dart';
+import 'package:frosthaven_assistant/services/network/superfan/greeting.dart';
 import 'package:frosthaven_assistant/services/service_locator.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -376,6 +377,195 @@ void main() {
       expect(bState['heartAttacksBefore'], equals(1));
       expect(bState['littleHeartAttacks'], equals(3));
       expect(bState['littleHeartAttacksBefore'], equals(4));
+    });
+  });
+
+  // ── Swerski greeting (SuperNetwork phase 1) ─────────────────────────────────
+
+  group('Swerski greeting', () {
+    /// Waits for a server-side condition (roster updates happen on the
+    /// server's event loop, after the client-side future completes).
+    Future<void> waitUntilRoster(bool Function(List<dynamic>) done) async {
+      for (var i = 0; i < 200; i++) {
+        if (done(_testServer.swerskiClients)) return;
+        await Future<void>.delayed(const Duration(milliseconds: 10));
+      }
+      fail('roster never reached the expected state: '
+          '${_testServer.swerskiClients.map((c) => c.id).toList()}');
+    }
+
+    setUp(() => waitUntilRoster((r) => r.isEmpty));
+
+    test('a greeting is answered and listed', () async {
+      final clientA = await WireClient.connect('127.0.0.1', _serverPort);
+      addTearDown(clientA.close);
+      final initA = await clientA.doInit();
+
+      clientA.send(SwerskiGreeting.encode(
+        id: 'dev-1',
+        name: 'Kitchen tablet',
+        plays: const ['blinkblade@1'],
+      ));
+
+      final raw = await clientA.receive();
+      expect(raw, equals(SwerskiGreeting.encodeAck()));
+
+      final listed = _testServer.swerskiClients;
+      expect(listed.length, equals(1));
+      expect(listed.single.id, equals('dev-1'));
+      expect(listed.single.name, equals('Kitchen tablet'));
+      expect(listed.single.plays, equals(['blinkblade@1']));
+
+      // The greeting must not touch the game.
+      expect(_serverGameState.commandIndex.value, equals(initA.index));
+    });
+
+    test('a greeting is not forwarded and answers nobody else', () async {
+      final clientA = await WireClient.connect('127.0.0.1', _serverPort);
+      final clientB = await WireClient.connect('127.0.0.1', _serverPort);
+      addTearDown(clientA.close);
+      addTearDown(clientB.close);
+      await clientA.doInit();
+      await clientB.doInit();
+
+      clientA.send(SwerskiGreeting.encode(id: 'dev-1'));
+      expect(await clientA.receive(), equals(SwerskiGreeting.encodeAck()));
+
+      // B greeted nothing and must receive nothing.
+      await expectLater(
+        clientB.receive(timeout: const Duration(milliseconds: 300)),
+        throwsA(isA<TimeoutException>()),
+      );
+      // Only A is listed.
+      expect(_testServer.swerskiClients.map((c) => c.id).toList(),
+          equals(['dev-1']));
+    });
+
+    test('a client that does not greet is not listed and hears no swerski',
+        () async {
+      final client = await WireClient.connect('127.0.0.1', _serverPort);
+      addTearDown(client.close);
+      await client.doInit();
+
+      expect(_testServer.swerskiClients, isEmpty);
+      await expectLater(
+        client.receive(timeout: const Duration(milliseconds: 300)),
+        throwsA(isA<TimeoutException>()),
+      );
+    });
+
+    test('a malformed greeting is ignored without an error', () async {
+      final client = await WireClient.connect('127.0.0.1', _serverPort);
+      addTearDown(client.close);
+      await client.doInit();
+
+      client.send('swerski:Da Bears! superfan:1 {not json}');
+      client.send('swerski:wrong token');
+      client.send('swerski:Da Bears! superfan:9 {"id":"x"}');
+
+      // No ack, no error, no listing — and the connection stays usable.
+      await expectLater(
+        client.receive(timeout: const Duration(milliseconds: 300)),
+        throwsA(isA<TimeoutException>()),
+      );
+      expect(_testServer.swerskiClients, isEmpty);
+
+      client.send(SwerskiGreeting.encode(id: 'dev-after-malformed'));
+      expect(await client.receive(), equals(SwerskiGreeting.encodeAck()));
+    });
+
+    test('disconnect removes the entry', () async {
+      final client = await WireClient.connect('127.0.0.1', _serverPort);
+      await client.doInit();
+      client.send(SwerskiGreeting.encode(id: 'dev-1'));
+      await client.receive(); // ack
+      await waitUntilRoster((r) => r.isNotEmpty);
+
+      await client.close();
+      await waitUntilRoster((r) => r.isEmpty);
+    });
+
+    test('the same id on a new connection replaces the old entry', () async {
+      final oldClient = await WireClient.connect('127.0.0.1', _serverPort);
+      final newClient = await WireClient.connect('127.0.0.1', _serverPort);
+      addTearDown(newClient.close);
+      await oldClient.doInit();
+      await newClient.doInit();
+
+      oldClient.send(SwerskiGreeting.encode(id: 'dev-1', name: 'First'));
+      await oldClient.receive(); // ack
+      newClient.send(SwerskiGreeting.encode(id: 'dev-1', name: 'Second'));
+      await newClient.receive(); // ack
+
+      await waitUntilRoster((r) => r.length == 1 && r.single.name == 'Second');
+
+      // The old connection going away must not take the entry with it.
+      await oldClient.close();
+      await Future<void>.delayed(const Duration(milliseconds: 100));
+      final listed = _testServer.swerskiClients;
+      expect(listed.length, equals(1));
+      expect(listed.single.name, equals('Second'));
+    });
+
+    test('one connection is listed once, as it last greeted', () async {
+      final client = await WireClient.connect('127.0.0.1', _serverPort);
+      addTearDown(client.close);
+      await client.doInit();
+      client.send(SwerskiGreeting.encode(id: 'dev-1'));
+      await client.receive(); // ack
+      client.send(SwerskiGreeting.encode(id: 'dev-2'));
+      await client.receive(); // ack
+
+      expect(_testServer.swerskiClients.map((c) => c.id).toList(),
+          equals(['dev-2']));
+    });
+
+    test('a socket dropped from the connection elsewhere leaves the roster',
+        () async {
+      final client = await WireClient.connect('127.0.0.1', _serverPort);
+      addTearDown(client.close);
+      await client.doInit();
+      client.send(SwerskiGreeting.encode(id: 'dev-1'));
+      await client.receive(); // ack
+      await waitUntilRoster((r) => r.isNotEmpty);
+
+      // Communication drops a write-failing socket directly, without the
+      // server's removeClientConnection ever firing.
+      getIt<Connection>().remove(_testServer.swerskiClients.single.socket);
+      await waitUntilRoster((r) => r.isEmpty);
+    });
+
+    test('stopping the server empties the roster', () async {
+      final client = await WireClient.connect('127.0.0.1', _serverPort);
+      await client.doInit();
+      client.send(SwerskiGreeting.encode(id: 'dev-1'));
+      await client.receive(); // ack
+      await waitUntilRoster((r) => r.isNotEmpty);
+
+      final stoppedSocket = _testServer.serverSocket;
+      _testServer.stopServer(null);
+      expect(_testServer.swerskiClients, isEmpty);
+
+      try {
+        await client.close();
+      } catch (_) {
+        // stopServer already destroyed the connection.
+      }
+
+      // Bring the shared server back up for the rest of this file.
+      // ignore: discarded_futures
+      _testServer.startServerInternal('127.0.0.1', 0);
+      for (var i = 0; i < 100; i++) {
+        if (_testServer.serverSocket != null &&
+            !identical(_testServer.serverSocket, stoppedSocket)) {
+          break;
+        }
+        await Future<void>.delayed(const Duration(milliseconds: 10));
+      }
+      _serverPort = _testServer.serverSocket!.port;
+      final probe = await Socket.connect('127.0.0.1', _serverPort,
+          timeout: const Duration(seconds: 2));
+      await probe.close();
     });
   });
 

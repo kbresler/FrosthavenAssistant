@@ -15,12 +15,15 @@ import 'communication.dart';
 import 'connection.dart';
 import 'network.dart';
 import 'superfan/preserve_swerski_fields.dart';
+import 'superfan/greeting.dart';
+import 'superfan/roster.dart';
 
 class Server extends GameServer {
   final GameState _gameState;
   final Communication _communication;
   final Connection _connection;
   final Settings? _settingsOverride;
+  final SwerskiRoster _swerskiRoster;
 
   Server(
       {GameState? gameState,
@@ -30,9 +33,14 @@ class Server extends GameServer {
       : _gameState = gameState ?? getIt<GameState>(),
         _communication = communication ?? getIt<Communication>(),
         _connection = connection ?? getIt<Connection>(),
+        _swerskiRoster = SwerskiRoster(connection ?? getIt<Connection>()),
         _settingsOverride = settings;
 
   Settings get _settings => _settingsOverride ?? getIt<Settings>();
+
+  /// The Swerski devices that have greeted on this server since it started.
+  List<SwerskiDevice> get swerskiClients => _swerskiRoster.devices;
+
   AppLocalizations get _l10n {
     final code = _settings.locale.value;
     try {
@@ -201,6 +209,21 @@ class Server extends GameServer {
   }
 
   @override
+  void processMessages(String message, Socket client) {
+    if (SwerskiGreeting.isSwerskiMessage(message)) {
+      final greeting = SwerskiGreeting.parse(message);
+      if (greeting != null) {
+        _swerskiRoster.greet(greeting, client);
+        sendToOnly(SwerskiGreeting.encodeAck(), client);
+      }
+      // Anything else Swerski-prefixed is ignored. Game state and the command
+      // index are never touched by Swerski traffic.
+      return;
+    }
+    super.processMessages(message, client);
+  }
+
+  @override
   void addClientConnection(Socket client) {
     _connection.add(client);
   }
@@ -208,11 +231,13 @@ class Server extends GameServer {
   @override
   void removeClientConnection(Socket client) {
     _connection.remove(client);
+    _swerskiRoster.drop(client);
   }
 
   @override
   void removeAllClientConnections() {
     _connection.removeAll();
+    _swerskiRoster.clear();
   }
 
   static const int _defaultPort = 4567;

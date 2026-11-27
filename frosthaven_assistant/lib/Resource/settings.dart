@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'dart:io';
+import 'dart:math';
 
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/foundation.dart';
@@ -18,6 +19,7 @@ import 'enums.dart';
 
 class Settings {
   static const double _kDesktopBarScale = 1.6;
+  static const int _deviceIdBytes = 8;
 
   final userScalingMainList = ValueNotifier<double>(1.0);
   final userScalingBars = ValueNotifier<double>(
@@ -85,6 +87,12 @@ class Settings {
   String lastKnownConnection = "192.168.1.???"; //only these
   String lastKnownPort = "4567";
   String lastKnownHostIP = "";
+
+  // Swerski: who this device is on the network. The id is generated once and
+  // never changes, so a host recognises the device across connections.
+  String deviceId = "";
+  final deviceName = ValueNotifier<String>("");
+  final devicePlays = ValueNotifier<List<String>>([]);
 
   bool connectClientOnStartup = false;
 
@@ -238,10 +246,12 @@ class Settings {
 
     const sharedPrefsKey = 'settingsState';
     String? state;
+    var readFailed = false;
     try {
       final prefs = await SharedPreferences.getInstance();
       state = prefs.getString(sharedPrefsKey);
     } catch (error) {
+      readFailed = true;
       if (kDebugMode) {
         print(error);
       }
@@ -322,6 +332,16 @@ class Settings {
       if (data["lastKnownHostIP"] != null) {
         lastKnownHostIP = data["lastKnownHostIP"];
       }
+      if (data["deviceId"] is String) {
+        deviceId = data["deviceId"];
+      }
+      if (data["deviceName"] is String) {
+        deviceName.value = data["deviceName"];
+      }
+      if (data["devicePlays"] is List) {
+        devicePlays.value =
+            (data["devicePlays"] as List).whereType<String>().toList();
+      }
 
       if (data["shimmer"] != null) {
         shimmer.value = data["shimmer"];
@@ -400,6 +420,22 @@ class Settings {
         });
       }
     }
+
+    // First start, or a save written before the id existed: pick one now and
+    // keep it, so every greeting this device ever sends names the same device.
+    if (deviceId.isEmpty && !readFailed) {
+      deviceId = _newDeviceId();
+      await saveToDisk();
+    }
+  }
+
+  static String _newDeviceId() {
+    final random = Random.secure();
+    final buffer = StringBuffer();
+    for (var i = 0; i < _deviceIdBytes; i++) {
+      buffer.write(random.nextInt(256).toRadixString(16).padLeft(2, '0'));
+    }
+    return buffer.toString();
   }
 
   @override
@@ -445,7 +481,10 @@ class Settings {
         '"connectClientOnStartup": $connectClientOnStartup, '
         '"lastKnownConnection": "$lastKnownConnection", '
         '"lastKnownPort": "$lastKnownPort", '
-        '"lastKnownHostIP": "$lastKnownHostIP" '
+        '"lastKnownHostIP": "$lastKnownHostIP", '
+        '"deviceId": ${jsonEncode(deviceId)}, '
+        '"deviceName": ${jsonEncode(deviceName.value)}, '
+        '"devicePlays": ${jsonEncode(devicePlays.value)} '
         '}';
   }
 }
