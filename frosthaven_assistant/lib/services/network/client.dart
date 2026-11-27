@@ -14,6 +14,7 @@ import '../../Resource/state/game_state.dart';
 import '../../l10n/app_localizations.dart';
 import '../service_locator.dart';
 import 'connection.dart';
+import 'superfan/fans.dart';
 import 'superfan/greeting.dart';
 
 class Client {
@@ -28,6 +29,10 @@ class Client {
   static const int _maxMissedPongs = 2;
 
   bool _connectCancelled = false;
+
+  /// Whether the "who do you play?" dialog has been offered during this app
+  /// run. In memory only — a fresh app start asks again.
+  bool _askedThisRun = false;
   final GameState _gameState;
   final Communication _communication;
   final Connection _connection;
@@ -65,6 +70,8 @@ class Client {
     _missedPongs = 0;
     _connectCancelled = false;
     _network.hostGreeted.value = false;
+    _network.superFans.value = const [];
+    _network.superFanJoined.value = null;
     _pingGeneration++;
     // Bumping the generation retires any chain from a previous connection, so
     // the old chain can no longer stand in for this one — clear the re-entrancy
@@ -88,11 +95,7 @@ class Client {
           }
           _settings.saveToDisk();
           _send("init protocolVersion:${GameServer.protocolVersion}");
-          _send(SwerskiGreeting.encode(
-            id: _settings.deviceId,
-            name: _settings.deviceName.value,
-            plays: _settings.devicePlays.value,
-          ));
+          _sendSuperFanGreeting(asking: !_askedThisRun);
           _sendPing();
           _listen();
         },
@@ -122,6 +125,57 @@ class Client {
   void cancelConnect() {
     _connectCancelled = true;
     _connection.cancelConnect();
+  }
+
+  void _sendSuperFanGreeting({bool asking = false}) {
+    _send(SwerskiGreeting.encode(
+      id: _settings.deviceId,
+      name: _settings.deviceName.value,
+      plays: _settings.devicePlays.value,
+      asking: asking,
+    ));
+  }
+
+  /// The choice dialog was shown: the question is asked for this app run and
+  /// will not come up again until the app restarts. A game with no characters
+  /// must not call this — the question stays unasked for the next connection.
+  void markSuperFanAsked() {
+    _askedThisRun = true;
+    _network.superFanChoiceRequested.value = false;
+  }
+
+  /// The picker will not produce an answer — the game has no characters to
+  /// ask about, or the player dismissed it without OK so the stored choice
+  /// stands. A greeted host gets the normal greeting with that choice, so it
+  /// announces this device instead of waiting for one that never comes.
+  void superFanNothingToAsk() {
+    _network.superFanChoiceRequested.value = false;
+    if (_settings.client.value == ClientState.connected &&
+        _network.hostGreeted.value) {
+      _sendSuperFanGreeting();
+    }
+  }
+
+  /// Re-sends this device's greeting after its name changed in Settings: the
+  /// other devices learn the new name when the menu closes, not per keystroke.
+  /// A rename is not a join, so no banner follows it.
+  void reannounceSuperFanIdentity() {
+    if (_settings.client.value == ClientState.connected &&
+        _network.hostGreeted.value) {
+      _sendSuperFanGreeting();
+    }
+  }
+
+  /// Stores what this device plays and saves settings; while connected to a
+  /// greeted host, re-sends the greeting so the SuperNetwork list picks the
+  /// change up right away.
+  void saveSuperFanPlays(List<String> plays) {
+    _settings.devicePlays.value = plays;
+    _settings.saveToDisk();
+    if (_settings.client.value == ClientState.connected &&
+        _network.hostGreeted.value) {
+      _sendSuperFanGreeting();
+    }
   }
 
   bool _pinging =
@@ -226,11 +280,32 @@ class Client {
   }
 
   void _handleContent(String message) {
+    if (SwerskiFan.isFansMessage(message)) {
+      // The host's SuperNetwork roster; a malformed list is ignored, the old
+      // one stays.
+      final fans = SwerskiFan.parseFans(message);
+      if (fans != null) {
+        _network.superFans.value = fans;
+      }
+      return;
+    }
+    if (SwerskiFan.isJoinedMessage(message)) {
+      // A device finished joining — queued for the banner, which consumes and
+      // clears it.
+      final fan = SwerskiFan.parseJoined(message);
+      if (fan != null) {
+        _network.superFanJoined.value = fan;
+      }
+      return;
+    }
     if (SwerskiGreeting.isSwerskiMessage(message)) {
       // The host's ack to our greeting; any other Swerski traffic (a greeting
       // aimed at us, a future version) is protocol noise we pass over.
       if (SwerskiGreeting.isAck(message)) {
         _network.hostGreeted.value = true;
+        if (!_askedThisRun) {
+          _network.superFanChoiceRequested.value = true;
+        }
       }
       return;
     }
@@ -291,6 +366,8 @@ class Client {
     _pingGeneration++;
     _missedPongs = 0;
     _network.hostGreeted.value = false;
+    _network.superFans.value = const [];
+    _network.superFanJoined.value = null;
 
     if (_network.appInBackground) {
       _network.clientDisconnectedWhileInBackground = true;

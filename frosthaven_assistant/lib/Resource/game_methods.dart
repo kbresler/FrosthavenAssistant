@@ -7,6 +7,7 @@ import 'package:frosthaven_assistant/Resource/state/game_state.dart';
 import '../Model/character_class.dart';
 import '../Model/monster.dart';
 import '../services/service_locator.dart';
+import '../services/translation_service.dart';
 import 'enums.dart';
 
 class GameMethods {
@@ -171,6 +172,23 @@ class GameMethods {
     }
 
     return characters;
+  }
+
+  /// Names to show for a device's SuperNetwork choices: a character still in
+  /// the game shows as on screen (through the translation service, like the
+  /// other character pickers), one that left keeps its stored id.
+  static List<String> superFanPlaysNames(List<String> plays,
+      {GameState? gameState}) {
+    final characters = getCurrentCharacters(gameState: gameState);
+    return plays.map((play) {
+      for (final character in characters) {
+        if (character.id == play) {
+          return getIt<TranslationService>()
+              .t(character.characterState.display.value);
+        }
+      }
+      return play;
+    }).toList();
   }
 
   static Character? getCurrentCharacter({GameState? gameState}) {

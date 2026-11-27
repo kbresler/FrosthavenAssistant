@@ -3,10 +3,15 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 
 import '../../../Resource/app_constants.dart';
+import '../../../Resource/game_methods.dart';
 import '../../../Resource/settings.dart';
+import '../../../Resource/ui_utils.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../services/network/client.dart';
 import '../../../services/network/network.dart';
+import '../../../services/network/superfan/fans.dart';
+import '../super_fan_choice_menu.dart';
+import 'settings_checkbox.dart';
 
 class SettingsNetworkSection extends StatefulWidget {
   static const double _kInputWidth = 200.0;
@@ -180,7 +185,108 @@ class SettingsNetworkSectionState extends State<SettingsNetworkSection> {
             maxLength: SettingsNetworkSection._kPortMaxLength,
           ),
         ),
+        _superNetworkSection(context),
       ],
+    );
+  }
+
+  /// Swerski: who is on the SuperNetwork. While hosting, or connected to a
+  /// host that greeted, one row per device: its name, a "host" marker, and
+  /// what it plays. A character two devices play is flagged on both rows.
+  Widget _superNetworkSection(BuildContext context) {
+    return ListenableBuilder(
+        listenable: Listenable.merge(
+            [widget.settings.server, widget.settings.client, widget.network.hostGreeted]),
+        builder: (context, child) {
+          final hosting = widget.settings.server.value;
+          final greetedClient = widget.settings.client.value ==
+                  ClientState.connected &&
+              widget.network.hostGreeted.value;
+          if (!hosting && !greetedClient) return const SizedBox.shrink();
+          return ValueListenableBuilder<List<SwerskiFan>>(
+              valueListenable: widget.network.superFans,
+              builder: (context, fans, child) {
+                final l10n = AppLocalizations.of(context)!;
+                if (fans.isEmpty && !greetedClient) {
+                  return const SizedBox.shrink();
+                }
+                final claims = <String, int>{};
+                for (final fan in fans) {
+                  for (final play in fan.plays) {
+                    claims[play] = (claims[play] ?? 0) + 1;
+                  }
+                }
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    SettingsHeading(l10n.superFanNetworkHeading),
+                    for (final fan in fans) _fanRow(context, l10n, fan, claims),
+                    if (greetedClient) _myChoiceRow(context, l10n),
+                  ],
+                );
+              });
+        });
+  }
+
+  /// Swerski: as a client of a greeted host, what this device plays and a
+  /// button to open the choice picker again.
+  Widget _myChoiceRow(BuildContext context, AppLocalizations l10n) {
+    return ValueListenableBuilder<List<String>>(
+        valueListenable: widget.settings.devicePlays,
+        builder: (context, plays, child) {
+          final names = GameMethods.superFanPlaysNames(plays);
+          return ListTile(
+            title: Text(l10n.superFanYourChoice),
+            subtitle: Text(
+                names.isEmpty ? l10n.superFanPlaysTable : names.join(', ')),
+            trailing: TextButton(
+              // With no characters the picker would be empty and its OK
+              // would wipe the stored choice, so it stays shut.
+              onPressed: GameMethods.getCurrentCharacters().isEmpty
+                  ? null
+                  : () {
+                      openDialogWithDismissOption<List<String>>(
+                        context,
+                        SuperFanChoiceMenu(
+                          characters: GameMethods.getCurrentCharacters(),
+                          storedPlays: widget.settings.devicePlays.value,
+                        ),
+                        true,
+                      ).then((picks) {
+                        if (picks != null) {
+                          widget.client.saveSuperFanPlays(picks);
+                        }
+                      });
+                    },
+              child: Text(l10n.superFanChangeButton),
+            ),
+          );
+        });
+  }
+
+  Widget _fanRow(BuildContext context, AppLocalizations l10n, SwerskiFan fan,
+      Map<String, int> claims) {
+    final name = fan.name.isEmpty ? l10n.superFanUnnamedDevice : fan.name;
+    final names = GameMethods.superFanPlaysNames(fan.plays);
+    final plays = <String>[];
+    for (var i = 0; i < fan.plays.length; i++) {
+      final shared = (claims[fan.plays[i]] ?? 0) > 1;
+      plays.add(shared ? l10n.superFanPlaysShared(names[i]) : names[i]);
+    }
+    final theme = Theme.of(context);
+    return ListTile(
+      title: Row(
+        children: [
+          Flexible(child: Text(name)),
+          if (fan.host) ...[
+            const SizedBox(width: 8),
+            Text(l10n.superFanHostMarker,
+                style: theme.textTheme.bodySmall
+                    ?.copyWith(fontStyle: FontStyle.italic)),
+          ],
+        ],
+      ),
+      subtitle: Text(plays.isEmpty ? l10n.superFanPlaysTable : plays.join(', ')),
     );
   }
 }

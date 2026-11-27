@@ -14,6 +14,7 @@ import 'package:frosthaven_assistant/services/network/client.dart';
 import 'package:frosthaven_assistant/services/network/communication.dart';
 import 'package:frosthaven_assistant/services/network/connection.dart';
 import 'package:frosthaven_assistant/services/network/network.dart';
+import 'package:frosthaven_assistant/services/network/superfan/fans.dart';
 import 'package:frosthaven_assistant/services/network/superfan/greeting.dart';
 import 'package:frosthaven_assistant_server/game_server.dart';
 import 'package:get_it/get_it.dart';
@@ -56,6 +57,9 @@ void main() {
     when(_network.networkMessage).thenReturn(ValueNotifier<String>(''));
     when(_network.networkMessageIsError).thenReturn(ValueNotifier<bool>(false));
     when(_network.hostGreeted).thenReturn(ValueNotifier<bool>(false));
+    when(_network.superFans).thenReturn(ValueNotifier<List<SwerskiFan>>(const []));
+    when(_network.superFanJoined)
+        .thenReturn(ValueNotifier<SwerskiFan?>(null));
     _getIt.registerFactory<Connection>(() => _connection);
     _getIt.registerFactory<GameState>(() => _gameState);
     _getIt.registerFactory<Communication>(() => _communication);
@@ -98,6 +102,8 @@ void main() {
     when(network.networkMessage).thenReturn(ValueNotifier<String>(''));
     when(network.networkMessageIsError).thenReturn(ValueNotifier<bool>(false));
     when(network.hostGreeted).thenReturn(ValueNotifier<bool>(false));
+    when(network.superFans).thenReturn(ValueNotifier<List<SwerskiFan>>(const []));
+    when(network.superFanJoined).thenReturn(ValueNotifier<SwerskiFan?>(null));
     when(network.appInBackground).thenReturn(false);
     when(socket.remoteAddress).thenReturn(InternetAddress('127.0.0.1'));
     when(socket.remotePort).thenReturn(4567);
@@ -152,6 +158,8 @@ void main() {
     when(network.networkMessage).thenReturn(ValueNotifier<String>(''));
     when(network.networkMessageIsError).thenReturn(ValueNotifier<bool>(false));
     when(network.hostGreeted).thenReturn(ValueNotifier<bool>(false));
+    when(network.superFans).thenReturn(ValueNotifier<List<SwerskiFan>>(const []));
+    when(network.superFanJoined).thenReturn(ValueNotifier<SwerskiFan?>(null));
     when(network.appInBackground).thenReturn(false);
     when(socket.remoteAddress).thenReturn(InternetAddress('127.0.0.1'));
     when(socket.remotePort).thenReturn(4567);
@@ -170,11 +178,15 @@ void main() {
       client.connect(_address);
       async.elapse(const Duration(milliseconds: 50));
 
+      // First greeting of the app run asks to be prompted (B2).
       verifyInOrder([
         communication.sendToAll(
             'init protocolVersion:${GameServer.protocolVersion}'),
         communication.sendToAll(SwerskiGreeting.encode(
-            id: 'device-1', name: 'Table phone', plays: ['play-1'])),
+            id: 'device-1',
+            name: 'Table phone',
+            plays: ['play-1'],
+            asking: true)),
       ]);
 
       // A throw from the greeting must not swallow the rest of the connect
@@ -248,6 +260,321 @@ void main() {
       host.hostGreeted.value.shouldBeFalse();
     });
   });
+
+  test('a fans message fills the SuperNetwork list', () {
+    final host = _FakeHost();
+    final client = host.client();
+
+    fakeAsync((async) {
+      client.connect(_address);
+      async.elapse(const Duration(milliseconds: 50));
+      host.superFans.value.shouldBeEmpty();
+
+      host.push('S3nD:${SwerskiFan.encodeFans(const [
+        SwerskiFan(
+            id: 'host-1', name: 'Tablet host', plays: ['blinkblade@1'], host: true),
+        SwerskiFan(id: 'dev-2', name: 'Hatchet'),
+      ])}[EOM]');
+
+      final fans = host.superFans.value;
+      fans.length.shouldBe(2);
+      fans.first.id.shouldBeEqualTo('host-1');
+      fans.first.host.shouldBeTrue();
+      fans.first.plays.shouldBeEqualTo(['blinkblade@1']);
+      fans.last.name.shouldBeEqualTo('Hatchet');
+    });
+  });
+
+  test('an empty fans message empties the list', () {
+    final host = _FakeHost();
+    final client = host.client();
+
+    fakeAsync((async) {
+      client.connect(_address);
+      async.elapse(const Duration(milliseconds: 50));
+      host.push('S3nD:${SwerskiFan.encodeFans(const [
+        SwerskiFan(id: 'host-1', host: true),
+      ])}[EOM]');
+      host.superFans.value.length.shouldBe(1);
+
+      host.push('S3nD:${SwerskiFan.encodeFans(const [])}[EOM]');
+      host.superFans.value.shouldBeEmpty();
+    });
+  });
+
+  test('a joined message names the new fan for the banner', () {
+    final host = _FakeHost();
+    final client = host.client();
+
+    fakeAsync((async) {
+      client.connect(_address);
+      async.elapse(const Duration(milliseconds: 50));
+
+      host.push('S3nD:${SwerskiFan.encodeJoined(
+          const SwerskiFan(id: 'dev-9', name: 'Hatchet', plays: ['blinkblade@1']))}[EOM]');
+      // The banner needs the plays too, so the notifier carries the fan.
+      host.superFanJoined.value?.name.shouldBeEqualTo('Hatchet');
+      host.superFanJoined.value?.plays.shouldBeEqualTo(['blinkblade@1']);
+    });
+  });
+
+  test('malformed fans and joined messages change nothing', () {
+    final host = _FakeHost();
+    final client = host.client();
+    final prefix = SwerskiGreeting.encode(id: 'x').substring(0, 8);
+
+    fakeAsync((async) {
+      client.connect(_address);
+      async.elapse(const Duration(milliseconds: 50));
+      host.push('S3nD:${SwerskiFan.encodeFans(const [
+        SwerskiFan(id: 'host-1', host: true),
+      ])}[EOM]');
+      host.superFanJoined.value = const SwerskiFan(id: 'shown', name: 'already shown');
+
+      for (final junk in [
+        '${prefix}fans {not json}',
+        '${prefix}fans',
+        '${prefix}joined {}',
+      ]) {
+        host.push('S3nD:$junk[EOM]');
+      }
+
+      host.superFans.value.length.shouldBe(1);
+      host.superFanJoined.value?.name.shouldBeEqualTo('already shown');
+    });
+  });
+
+  test('disconnect clears the SuperNetwork list', () {
+    final host = _FakeHost();
+    final client = host.client();
+
+    fakeAsync((async) {
+      client.connect(_address);
+      async.elapse(const Duration(milliseconds: 50));
+      host.push('S3nD:${SwerskiFan.encodeFans(const [
+        SwerskiFan(id: 'host-1', host: true),
+      ])}[EOM]');
+      host.push('S3nD:${SwerskiFan.encodeJoined(
+          const SwerskiFan(id: 'dev-2', name: 'Hatchet'))}[EOM]');
+
+      client.disconnect(null);
+      host.superFans.value.shouldBeEmpty();
+      // A banner nobody got to show must not fire on the next connection.
+      expect(host.superFanJoined.value, isNull);
+    });
+  });
+
+  test('a new connect starts with an empty SuperNetwork list', () {
+    final host = _FakeHost();
+    final client = host.client();
+
+    fakeAsync((async) {
+      client.connect(_address);
+      async.elapse(const Duration(milliseconds: 50));
+      host.push('S3nD:${SwerskiFan.encodeFans(const [
+        SwerskiFan(id: 'host-1', host: true),
+      ])}[EOM]');
+
+      // Reconnect without an intervening disconnect: whatever the previous
+      // host advertised is stale until the new one says otherwise.
+      client.connect(_address);
+      async.elapse(const Duration(milliseconds: 50));
+      host.superFans.value.shouldBeEmpty();
+    });
+  });
+
+  test('the greeting asks to be prompted while the question is pending', () {
+    final host = _FakeHost();
+    final client = host.client();
+
+    fakeAsync((async) {
+      client.connect(_address);
+      async.elapse(const Duration(milliseconds: 50));
+
+      final greeting = SwerskiGreeting.parse(host.onlyGreetingMessage());
+      greeting?.id.shouldBeEqualTo('device-1');
+      (greeting?.asking ?? false).shouldBeTrue();
+    });
+  });
+
+  test('a greeting stops asking once the question was asked', () {
+    final host = _FakeHost();
+    final client = host.client();
+
+    fakeAsync((async) {
+      client.markSuperFanAsked();
+      client.connect(_address);
+      async.elapse(const Duration(milliseconds: 50));
+
+      // Byte-identical to the plain greeting: no asking key at all.
+      host.onlyGreetingMessage()
+          .shouldBeEqualTo(SwerskiGreeting.encode(id: 'device-1'));
+    });
+  });
+
+  test('the ack requests the choice dialog', () {
+    final host = _FakeHost();
+    final client = host.client();
+
+    fakeAsync((async) {
+      client.connect(_address);
+      async.elapse(const Duration(milliseconds: 50));
+      host.superFanChoiceRequested.value.shouldBeFalse();
+
+      host.push('S3nD:${SwerskiGreeting.encodeAck()}[EOM]');
+      host.superFanChoiceRequested.value.shouldBeTrue();
+    });
+  });
+
+  test('an ack does not request the dialog after the question was asked', () {
+    final host = _FakeHost();
+    final client = host.client();
+
+    fakeAsync((async) {
+      client.markSuperFanAsked();
+      client.connect(_address);
+      async.elapse(const Duration(milliseconds: 50));
+
+      host.push('S3nD:${SwerskiGreeting.encodeAck()}[EOM]');
+      host.superFanChoiceRequested.value.shouldBeFalse();
+    });
+  });
+
+  test('marking the question asked clears a pending request', () {
+    final host = _FakeHost();
+    final client = host.client();
+
+    fakeAsync((async) {
+      client.connect(_address);
+      async.elapse(const Duration(milliseconds: 50));
+      host.push('S3nD:${SwerskiGreeting.encodeAck()}[EOM]');
+      host.superFanChoiceRequested.value.shouldBeTrue();
+
+      // The dialog is opening, so the request is consumed. (A game with no
+      // characters clears only the notifier without marking, so the question
+      // stays unasked.)
+      client.markSuperFanAsked();
+      host.superFanChoiceRequested.value.shouldBeFalse();
+    });
+  });
+
+  test('nothing to ask re-sends the normal greeting, keeps the question', () {
+    final host = _FakeHost();
+    final client = host.client();
+
+    fakeAsync((async) {
+      client.connect(_address);
+      async.elapse(const Duration(milliseconds: 50));
+      host.push('S3nD:${SwerskiGreeting.encodeAck()}[EOM]');
+      host.superFanChoiceRequested.value.shouldBeTrue();
+
+      // The trigger found no characters: the host gets a normal greeting so it
+      // can announce the device after all, and the question stays unasked.
+      clearInteractions(host.communication);
+      client.superFanNothingToAsk();
+
+      host.superFanChoiceRequested.value.shouldBeFalse();
+      verify(host.communication.sendToAll(SwerskiGreeting.encode(
+              id: 'device-1')))
+          .called(1);
+
+      // Still unasked: the next ack requests the dialog again.
+      host.push('S3nD:${SwerskiGreeting.encodeAck()}[EOM]');
+      host.superFanChoiceRequested.value.shouldBeTrue();
+    });
+  });
+
+  test('nothing to ask sends nothing before the ack', () {
+    final host = _FakeHost();
+    final client = host.client();
+
+    fakeAsync((async) {
+      client.connect(_address);
+      async.elapse(const Duration(milliseconds: 50));
+
+      clearInteractions(host.communication);
+      client.superFanNothingToAsk();
+
+      host.superFanChoiceRequested.value.shouldBeFalse();
+      verifyNever(host.communication.sendToAll(SwerskiGreeting.encode(
+              id: 'device-1')));
+    });
+  });
+
+  test('saving the choice stores it, saves settings and re-sends the greeting',
+      () {
+    final host = _FakeHost();
+    final client = host.client();
+
+    fakeAsync((async) {
+      client.connect(_address);
+      async.elapse(const Duration(milliseconds: 50));
+      host.push('S3nD:${SwerskiGreeting.encodeAck()}[EOM]');
+
+      // connect() sent and saved too; count only what the choice causes.
+      clearInteractions(host.settings);
+      clearInteractions(host.communication);
+      client.saveSuperFanPlays(['blinkblade@1']);
+
+      host.devicePlays.value.shouldBeEqualTo(['blinkblade@1']);
+      verify(host.settings.saveToDisk()).called(1);
+      verify(host.communication.sendToAll(SwerskiGreeting.encode(
+              id: 'device-1', plays: ['blinkblade@1'])))
+          .called(1);
+    });
+  });
+
+  test('saving the choice does not send while the host is not greeted', () {
+    final host = _FakeHost();
+    final client = host.client();
+
+    fakeAsync((async) {
+      client.connect(_address);
+      async.elapse(const Duration(milliseconds: 50));
+      // No ack: an official host, or no host at all. Nothing to re-greet.
+      client.saveSuperFanPlays(['blinkblade@1']);
+
+      host.devicePlays.value.shouldBeEqualTo(['blinkblade@1']);
+      verifyNever(host.communication.sendToAll(SwerskiGreeting.encode(
+              id: 'device-1', plays: ['blinkblade@1'])));
+    });
+  });
+
+  test('a new name is re-sent when the settings menu closed', () {
+    final host = _FakeHost();
+    final client = host.client();
+
+    fakeAsync((async) {
+      client.connect(_address);
+      async.elapse(const Duration(milliseconds: 50));
+      host.push('S3nD:${SwerskiGreeting.encodeAck()}[EOM]');
+
+      clearInteractions(host.communication);
+      host.deviceName.value = 'Kitchen tablet';
+      client.reannounceSuperFanIdentity();
+
+      verify(host.communication.sendToAll(SwerskiGreeting.encode(
+              id: 'device-1', name: 'Kitchen tablet')))
+          .called(1);
+    });
+  });
+
+  test('a new name sends nothing before the ack', () {
+    final host = _FakeHost();
+    final client = host.client();
+
+    fakeAsync((async) {
+      client.connect(_address);
+      async.elapse(const Duration(milliseconds: 50));
+
+      clearInteractions(host.communication);
+      host.deviceName.value = 'Kitchen tablet';
+      client.reannounceSuperFanIdentity();
+
+      verifyNever(host.communication.sendToAll(SwerskiGreeting.encode(
+              id: 'device-1', name: 'Kitchen tablet')));
+    });
+  });
 }
 
 /// A wired-up set of local mocks for one client: `Network.hostGreeted` is a
@@ -260,6 +587,11 @@ class _FakeHost {
   final settings = MockSettings();
   final socket = MockSocket();
   final hostGreeted = ValueNotifier<bool>(false);
+  final superFans = ValueNotifier<List<SwerskiFan>>(const []);
+  final superFanJoined = ValueNotifier<SwerskiFan?>(null);
+  final superFanChoiceRequested = ValueNotifier<bool>(false);
+  final devicePlays = ValueNotifier<List<String>>([]);
+  final deviceName = ValueNotifier<String>('');
 
   _FakeHost() {
     when(settings.lastKnownPort).thenReturn('4567');
@@ -267,11 +599,14 @@ class _FakeHost {
     when(settings.client)
         .thenReturn(ValueNotifier<ClientState>(ClientState.disconnected));
     when(settings.deviceId).thenReturn('device-1');
-    when(settings.deviceName).thenReturn(ValueNotifier<String>(''));
-    when(settings.devicePlays).thenReturn(ValueNotifier<List<String>>([]));
+    when(settings.deviceName).thenReturn(deviceName);
+    when(settings.devicePlays).thenReturn(devicePlays);
     when(network.networkMessage).thenReturn(ValueNotifier<String>(''));
     when(network.networkMessageIsError).thenReturn(ValueNotifier<bool>(false));
     when(network.hostGreeted).thenReturn(hostGreeted);
+    when(network.superFans).thenReturn(superFans);
+    when(network.superFanJoined).thenReturn(superFanJoined);
+    when(network.superFanChoiceRequested).thenReturn(superFanChoiceRequested);
     when(network.appInBackground).thenReturn(false);
     when(socket.remoteAddress).thenReturn(InternetAddress('127.0.0.1'));
     when(socket.remotePort).thenReturn(4567);
@@ -287,11 +622,28 @@ class _FakeHost {
         settings: settings,
       );
 
+void Function(Uint8List)? _onData;
+
   void push(String message) {
-    final onData = verify(communication.listen(captureAny, any, any))
+    // The listen invocation can only be verified once, so keep the captured
+    // callback for later pushes.
+    final onData = _onData ??= verify(communication.listen(captureAny, any, any))
         .captured
         .last as void Function(Uint8List);
     onData(utf8.encode(message));
+  }
+
+  /// The single Swerski greeting this client sent. Verification consumes the
+  /// send calls, so callers get either this or a targeted `verify` — not both.
+  String onlyGreetingMessage() {
+    final sent = verify(communication.sendToAll(captureAny))
+        .captured
+        .cast<String>()
+        .where((m) =>
+            SwerskiGreeting.isSwerskiMessage(m) && !SwerskiGreeting.isAck(m))
+        .toList();
+    expect(sent.length, equals(1));
+    return sent.single;
   }
 }
 

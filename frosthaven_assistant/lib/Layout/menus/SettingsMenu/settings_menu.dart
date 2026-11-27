@@ -63,6 +63,10 @@ class SettingsMenu extends StatefulWidget {
 class SettingsMenuState extends State<SettingsMenu> {
   final TextEditingController _deviceNameController = TextEditingController();
 
+  /// The name when the menu opened: the SuperNetwork is told about a rename
+  /// once, when the menu closes (however it closes), not per keystroke.
+  String _nameWhenOpened = '';
+
   Settings get settings => widget.settings ?? getIt<Settings>();
   GameState get _gameState => widget.gameState ?? getIt<GameState>();
   Network get _network => widget.network ?? getIt<Network>();
@@ -72,10 +76,16 @@ class SettingsMenuState extends State<SettingsMenu> {
   void initState() {
     super.initState();
     _deviceNameController.text = settings.deviceName.value;
+    _nameWhenOpened = settings.deviceName.value;
   }
 
   @override
   void dispose() {
+    if (settings.deviceName.value != _nameWhenOpened) {
+      // One of the two is a no-op: a client re-greets, a host re-lists.
+      _client.reannounceSuperFanIdentity();
+      _network.server.refreshHostIdentity();
+    }
     _deviceNameController.dispose();
     super.dispose();
   }

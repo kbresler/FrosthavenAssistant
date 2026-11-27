@@ -2481,6 +2481,72 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Remove no monsters'**
   String get cmdRemoveNoMonsters;
+
+  /// No description provided for @superFanChoiceTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Who do you play?'**
+  String get superFanChoiceTitle;
+
+  /// No description provided for @superFanChoiceHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Leave all unticked to play the whole table.'**
+  String get superFanChoiceHint;
+
+  /// No description provided for @superFanBannerPhone.
+  ///
+  /// In en, this message translates to:
+  /// **'Da Bears! {names}\'s phone is on the SuperNetwork'**
+  String superFanBannerPhone(Object names);
+
+  /// No description provided for @superFanBannerTable.
+  ///
+  /// In en, this message translates to:
+  /// **'Da Bears! The table is on the SuperNetwork'**
+  String get superFanBannerTable;
+
+  /// No description provided for @superFanNetworkHeading.
+  ///
+  /// In en, this message translates to:
+  /// **'SuperNetwork'**
+  String get superFanNetworkHeading;
+
+  /// No description provided for @superFanUnnamedDevice.
+  ///
+  /// In en, this message translates to:
+  /// **'Unnamed device'**
+  String get superFanUnnamedDevice;
+
+  /// No description provided for @superFanHostMarker.
+  ///
+  /// In en, this message translates to:
+  /// **'host'**
+  String get superFanHostMarker;
+
+  /// No description provided for @superFanPlaysTable.
+  ///
+  /// In en, this message translates to:
+  /// **'The table'**
+  String get superFanPlaysTable;
+
+  /// No description provided for @superFanYourChoice.
+  ///
+  /// In en, this message translates to:
+  /// **'You play'**
+  String get superFanYourChoice;
+
+  /// No description provided for @superFanChangeButton.
+  ///
+  /// In en, this message translates to:
+  /// **'Change'**
+  String get superFanChangeButton;
+
+  /// No description provided for @superFanPlaysShared.
+  ///
+  /// In en, this message translates to:
+  /// **'{name} (shared)'**
+  String superFanPlaysShared(Object name);
 }
 
 class _AppLocalizationsDelegate

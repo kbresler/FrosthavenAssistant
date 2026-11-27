@@ -8,16 +8,19 @@ import 'package:frosthaven_assistant/Resource/commands/set_ally_deck_in_og_gloom
 import 'package:frosthaven_assistant/Resource/enums.dart';
 import 'package:frosthaven_assistant/Resource/settings.dart';
 import 'package:frosthaven_assistant/Resource/state/game_state.dart';
+import 'package:frosthaven_assistant/Resource/ui_utils.dart';
+import 'package:frosthaven_assistant/services/network/client.dart';
 import 'package:frosthaven_assistant/services/service_locator.dart';
 
 import '../../command/test_helpers.dart';
+import 'super_fan_test_client.dart';
 
 void main() {
   setUpAll(() async {
     await setUpGame();
   });
 
-  Future<void> pumpMenu(WidgetTester tester) async {
+  Future<void> pumpMenu(WidgetTester tester, {Client? client}) async {
     final originalOnError = FlutterError.onError;
     addTearDown(() => FlutterError.onError = originalOnError);
     FlutterError.onError = ignoreOverflowErrors;
@@ -32,10 +35,7 @@ void main() {
         home: Builder(
           builder: (context) => ElevatedButton(
             onPressed: () {
-              showDialog(
-                context: context,
-                builder: (context) => const SettingsMenu(),
-              );
+              openDialog(context, SettingsMenu(client: client));
             },
             child: const Text('Open'),
           ),
@@ -613,6 +613,69 @@ void main() {
       final languageLeft = tester.getRect(find.text('Language:')).left;
       expect(fieldLeft, moreOrLessEquals(languageLeft, epsilon: 0.5),
           reason: 'the field must start where the Language label starts');
+    });
+
+    testWidgets('a renamed device is re-announced once the menu closes',
+        (WidgetTester tester) async {
+      final settings = getIt<Settings>();
+      final before = settings.deviceName.value;
+      addTearDown(() => settings.deviceName.value = before);
+      settings.deviceName.value = '';
+      final client = RecordingClient();
+
+      await pumpMenu(tester, client: client);
+      await tester.enterText(
+          find.widgetWithText(TextField, 'Device name'), 'Kitchen tablet');
+      await tester.pump();
+      // Not per keystroke: the other devices hear about it when the typing
+      // is over.
+      expect(client.reannounced, 0);
+
+      final close = find.text('Close');
+      await tester.ensureVisible(close);
+      await tester.pump();
+      await tester.tap(close);
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+      expect(client.reannounced, 1);
+    });
+
+    testWidgets('dismissal by tapping outside re-announces too',
+        (WidgetTester tester) async {
+      final settings = getIt<Settings>();
+      final before = settings.deviceName.value;
+      addTearDown(() => settings.deviceName.value = before);
+      settings.deviceName.value = '';
+      final client = RecordingClient();
+
+      await pumpMenu(tester, client: client);
+      await tester.enterText(
+          find.widgetWithText(TextField, 'Device name'), 'Kitchen tablet');
+      await tester.pump();
+
+      // The menu has no other way out than its Close button, but a tap on
+      // the scrim leaves it too.
+      await tester.tapAt(const Offset(5, 5));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+      expect(find.text('Device name'), findsNothing);
+      expect(client.reannounced, 1);
+    });
+
+    testWidgets('closing without renaming announces nothing',
+        (WidgetTester tester) async {
+      final settings = getIt<Settings>();
+      final before = settings.deviceName.value;
+      addTearDown(() => settings.deviceName.value = before);
+      final client = RecordingClient();
+
+      await pumpMenu(tester, client: client);
+      final close = find.text('Close');
+      await tester.ensureVisible(close);
+      await tester.pump();
+      await tester.tap(close);
+      await tester.pump();
+      expect(client.reannounced, 0);
     });
   });
 }

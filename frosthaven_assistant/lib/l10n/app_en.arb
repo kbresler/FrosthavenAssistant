@@ -603,5 +603,26 @@
   "cmdDontUseFhPerks": "{character} don't use Frosthaven Perks",
   "@cmdDontUseFhPerks": { "placeholders": { "character": { "type": "String" } } },
   "cmdRemoveNoCharacters": "Remove no characters",
-  "cmdRemoveNoMonsters": "Remove no monsters"
+  "cmdRemoveNoMonsters": "Remove no monsters",
+  "superFanChoiceTitle": "Who do you play?",
+  "superFanChoiceHint": "Leave all unticked to play the whole table.",
+  "superFanBannerPhone": "Da Bears! {names}'s phone is on the SuperNetwork",
+  "@superFanBannerPhone": {
+    "placeholders": {
+      "names": {}
+    }
+  },
+  "superFanBannerTable": "Da Bears! The table is on the SuperNetwork",
+  "superFanNetworkHeading": "SuperNetwork",
+  "superFanUnnamedDevice": "Unnamed device",
+  "superFanHostMarker": "host",
+  "superFanPlaysTable": "The table",
+  "superFanYourChoice": "You play",
+  "superFanChangeButton": "Change",
+  "superFanPlaysShared": "{name} (shared)",
+  "@superFanPlaysShared": {
+    "placeholders": {
+      "name": {}
+    }
+  }
 }

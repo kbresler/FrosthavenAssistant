@@ -1437,4 +1437,43 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get cmdRemoveNoMonsters => 'Keine Monster entfernt';
+
+  @override
+  String get superFanChoiceTitle => 'Who do you play?';
+
+  @override
+  String get superFanChoiceHint =>
+      'Leave all unticked to play the whole table.';
+
+  @override
+  String superFanBannerPhone(Object names) {
+    return 'Da Bears! $names\'s phone is on the SuperNetwork';
+  }
+
+  @override
+  String get superFanBannerTable =>
+      'Da Bears! The table is on the SuperNetwork';
+
+  @override
+  String get superFanNetworkHeading => 'SuperNetwork';
+
+  @override
+  String get superFanUnnamedDevice => 'Unnamed device';
+
+  @override
+  String get superFanHostMarker => 'host';
+
+  @override
+  String get superFanPlaysTable => 'The table';
+
+  @override
+  String get superFanYourChoice => 'You play';
+
+  @override
+  String get superFanChangeButton => 'Change';
+
+  @override
+  String superFanPlaysShared(Object name) {
+    return '$name (shared)';
+  }
 }

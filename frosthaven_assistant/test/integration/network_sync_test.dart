@@ -16,6 +16,7 @@ import 'package:frosthaven_assistant/services/network/communication.dart';
 import 'package:frosthaven_assistant/services/network/connection.dart';
 import 'package:frosthaven_assistant/services/network/network.dart';
 import 'package:frosthaven_assistant/services/network/server.dart';
+import 'package:frosthaven_assistant/services/network/superfan/fans.dart';
 import 'package:frosthaven_assistant/services/network/superfan/greeting.dart';
 import 'package:frosthaven_assistant/services/service_locator.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -566,6 +567,381 @@ void main() {
       final probe = await Socket.connect('127.0.0.1', _serverPort,
           timeout: const Duration(seconds: 2));
       await probe.close();
+    });
+  });
+
+  // ── Swerski fans list (SuperNetwork phase 2) ──────────────────────────────────
+
+  group('Swerski fans list', () {
+    Future<void> waitUntilFans(bool Function(List<SwerskiFan>) done) async {
+      for (var i = 0; i < 200; i++) {
+        if (done(getIt<Network>().superFans.value)) return;
+        await Future<void>.delayed(const Duration(milliseconds: 10));
+      }
+      fail('fans list never reached the expected state: '
+          '${getIt<Network>().superFans.value.map((f) => f.id).toList()}');
+    }
+
+    /// The next `fans` message on [client], skipping anything else.
+    Future<List<SwerskiFan>> receiveFans(WireClient client) async {
+      for (var i = 0; i < 5; i++) {
+        final parsed = SwerskiFan.parseFans(await client.receive());
+        if (parsed != null) return parsed;
+      }
+      throw StateError('no fans message in the last 5 messages');
+    }
+
+    Future<void> greet(WireClient client, String id) async {
+      client.send(SwerskiGreeting.encode(id: id));
+      expect(await client.receive(), equals(SwerskiGreeting.encodeAck()));
+    }
+
+    setUp(() async {
+      for (var i = 0; i < 200; i++) {
+        if (_testServer.swerskiClients.isEmpty) break;
+        await Future<void>.delayed(const Duration(milliseconds: 10));
+      }
+      // The host lists itself from its own settings, so the tests decide
+      // what that entry says. The stored devicePlays are deliberately
+      // non-empty: the host must ignore them and play the table.
+      final settings = getIt<Settings>();
+      settings.deviceId = 'host-1';
+      settings.deviceName.value = 'Table host';
+      settings.devicePlays.value = ['blinkblade@1', 'geminate@2'];
+      addTearDown(() {
+        settings.deviceId = '';
+        settings.deviceName.value = '';
+        settings.devicePlays.value = [];
+      });
+    });
+
+    test('the list holds the host first, then every greeted device',
+        () async {
+      final client = await WireClient.connect('127.0.0.1', _serverPort);
+      addTearDown(client.close);
+      await client.doInit();
+      await greet(client, 'dev-1');
+
+      await waitUntilFans((fans) => fans.length == 2);
+      final listed = getIt<Network>().superFans.value;
+      expect(listed.first.id, equals('host-1'));
+      expect(listed.first.name, equals('Table host'));
+      expect(listed.first.plays, isEmpty,
+          reason: 'the host plays the table, whatever its stored devicePlays '
+              'say');
+      expect(listed.first.host, isTrue);
+      expect(listed.last.id, equals('dev-1'));
+      expect(listed.last.host, isFalse);
+    });
+
+    test('the greeted device is sent the list', () async {
+      final client = await WireClient.connect('127.0.0.1', _serverPort);
+      addTearDown(client.close);
+      await client.doInit();
+      await greet(client, 'dev-1');
+
+      final fans = await receiveFans(client);
+      expect(fans.map((f) => f.id).toList(), equals(['host-1', 'dev-1']));
+      expect(fans.first.host, isTrue);
+      expect(fans.last.host, isFalse);
+    });
+
+    test('a device that never greeted hears no list', () async {
+      final swerski = await WireClient.connect('127.0.0.1', _serverPort);
+      final plain = await WireClient.connect('127.0.0.1', _serverPort);
+      addTearDown(swerski.close);
+      addTearDown(plain.close);
+      await swerski.doInit();
+      await plain.doInit();
+      await greet(swerski, 'dev-1');
+      await receiveFans(swerski);
+
+      await expectLater(
+        plain.receive(timeout: const Duration(milliseconds: 300)),
+        throwsA(isA<TimeoutException>()),
+      );
+    });
+
+    test('the list is re-sent when a device leaves', () async {
+      final clientA = await WireClient.connect('127.0.0.1', _serverPort);
+      final clientB = await WireClient.connect('127.0.0.1', _serverPort);
+      addTearDown(clientB.close);
+      await clientA.doInit();
+      await clientB.doInit();
+      await greet(clientA, 'dev-a');
+      await greet(clientB, 'dev-b');
+      await waitUntilFans((fans) => fans.length == 3);
+
+      // B got exactly one list: the one from its own greeting.
+      expect((await receiveFans(clientB)).length, equals(3));
+
+      await clientA.close();
+      await waitUntilFans((fans) => fans.length == 2);
+      final after = await receiveFans(clientB);
+      expect(after.map((f) => f.id).toList(), equals(['host-1', 'dev-b']));
+    });
+
+    test('the socket that just greeted always gets the list', () async {
+      final first = await WireClient.connect('127.0.0.1', _serverPort);
+      addTearDown(first.close);
+      await first.doInit();
+      await greet(first, 'dev-1');
+      await receiveFans(first);
+
+      // The same device reconnects before the host noticed the old socket
+      // died: the roster already holds its id, so the list is unchanged and
+      // the diff would skip the send. The greeting socket must get the list
+      // either way, or it shows a SuperNetwork that does not exist.
+      final second = await WireClient.connect('127.0.0.1', _serverPort);
+      addTearDown(second.close);
+      await second.doInit();
+      await greet(second, 'dev-1');
+
+      final fans = await receiveFans(second);
+      expect(fans.map((f) => f.id).toList(), equals(['host-1', 'dev-1']));
+    });
+
+    test('the host renaming itself refreshes the list, without a banner',
+        () async {
+      final client = await WireClient.connect('127.0.0.1', _serverPort);
+      addTearDown(client.close);
+      await client.doInit();
+      await greet(client, 'dev-1');
+      await receiveFans(client);
+      await waitUntilFans((fans) => fans.length == 2);
+
+      getIt<Settings>().deviceName.value = 'Kitchen host';
+      getIt<Network>().superFanJoined.value = null;
+      _testServer.refreshHostIdentity();
+
+      await waitUntilFans((fans) => fans.first.name == 'Kitchen host');
+      final fans = await receiveFans(client);
+      expect(fans.first.name, equals('Kitchen host'),
+          reason: 'the greeted device gets the updated list');
+      expect(getIt<Network>().superFanJoined.value, isNull,
+          reason: 'a rename is not a join');
+    });
+
+    test('stopping the server empties the list', () async {
+      final client = await WireClient.connect('127.0.0.1', _serverPort);
+      await client.doInit();
+      await greet(client, 'dev-1');
+      await waitUntilFans((fans) => fans.length == 2);
+
+      final stoppedSocket = _testServer.serverSocket;
+      _testServer.stopServer(null);
+      expect(getIt<Network>().superFans.value, isEmpty);
+
+      try {
+        await client.close();
+      } catch (_) {
+        // stopServer already destroyed the connection.
+      }
+
+      // Bring the shared server back up for the rest of this file.
+      // ignore: discarded_futures
+      _testServer.startServerInternal('127.0.0.1', 0);
+      for (var i = 0; i < 100; i++) {
+        if (_testServer.serverSocket != null &&
+            !identical(_testServer.serverSocket, stoppedSocket)) {
+          break;
+        }
+        await Future<void>.delayed(const Duration(milliseconds: 10));
+      }
+      _serverPort = _testServer.serverSocket!.port;
+      final probe = await Socket.connect('127.0.0.1', _serverPort,
+          timeout: const Duration(seconds: 2));
+      await probe.close();
+    });
+
+    test('a running server lists the host before anyone joins', () async {
+      // Restart the shared server and touch nothing else: Settings shows the
+      // SuperNetwork block as soon as the server runs, so the list must hold
+      // the host's own entry from the start, not only after a greeting.
+      final stoppedSocket = _testServer.serverSocket;
+      _testServer.stopServer(null);
+      // ignore: discarded_futures
+      _testServer.startServerInternal('127.0.0.1', 0);
+      for (var i = 0; i < 100; i++) {
+        if (_testServer.serverSocket != null &&
+            !identical(_testServer.serverSocket, stoppedSocket)) {
+          break;
+        }
+        await Future<void>.delayed(const Duration(milliseconds: 10));
+      }
+      _serverPort = _testServer.serverSocket!.port;
+      final probe = await Socket.connect('127.0.0.1', _serverPort,
+          timeout: const Duration(seconds: 2));
+      await probe.close();
+
+      final listed = getIt<Network>().superFans.value;
+      expect(listed.map((f) => f.id).toList(), equals(['host-1']));
+      expect(listed.single.name, equals('Table host'));
+      expect(listed.single.host, isTrue);
+    });
+  });
+
+  // ── Swerski joined announcement (SuperNetwork phase 2, rule 5) ────────────────
+
+  group('Swerski joined announcement', () {
+    /// Reads up to [messages] framed messages (waiting at most [timeout] for
+    /// the next one) and returns the first `joined` among them, null if none.
+    Future<SwerskiFan?> receiveJoined(
+      WireClient client, {
+      int messages = 5,
+      Duration timeout = const Duration(milliseconds: 300),
+    }) async {
+      for (var i = 0; i < messages; i++) {
+        String raw;
+        try {
+          raw = await client.receive(timeout: timeout);
+        } on TimeoutException {
+          return null;
+        }
+        final parsed = SwerskiFan.parseJoined(raw);
+        if (parsed != null) return parsed;
+      }
+      return null;
+    }
+
+    Future<void> greet(
+      WireClient client,
+      String id, {
+      String name = '',
+      List<String> plays = const [],
+      bool asking = false,
+    }) async {
+      client.send(SwerskiGreeting.encode(
+          id: id, name: name, plays: plays, asking: asking));
+      expect(await client.receive(), equals(SwerskiGreeting.encodeAck()));
+    }
+
+    Future<void> waitUntilRosterEmpty() async {
+      for (var i = 0; i < 200; i++) {
+        if (_testServer.swerskiClients.isEmpty) return;
+        await Future<void>.delayed(const Duration(milliseconds: 10));
+      }
+      fail('roster never emptied between tests');
+    }
+
+    setUp(() async {
+      await waitUntilRosterEmpty();
+      final settings = getIt<Settings>();
+      settings.deviceId = 'host-1';
+      settings.deviceName.value = 'Table host';
+      addTearDown(() {
+        settings.deviceId = '';
+        settings.deviceName.value = '';
+      });
+    });
+
+    test('a greeting announces the joiner to the greeted devices and to the host',
+        () async {
+      final first = await WireClient.connect('127.0.0.1', _serverPort);
+      addTearDown(first.close);
+      await first.doInit();
+      await greet(first, 'ann-a', name: 'First phone');
+
+      final joinedA = await receiveJoined(first);
+      expect(joinedA?.id, equals('ann-a'));
+
+      final second = await WireClient.connect('127.0.0.1', _serverPort);
+      addTearDown(second.close);
+      await second.doInit();
+      await greet(second, 'ann-b', name: 'Second phone');
+
+      final joinedBForSelf = await receiveJoined(second);
+      expect(joinedBForSelf?.id, equals('ann-b'));
+      final joinedBForFirst = await receiveJoined(first);
+      expect(joinedBForFirst?.id, equals('ann-b'));
+      expect(joinedBForFirst?.name, equals('Second phone'));
+      expect(getIt<Network>().superFanJoined.value?.name,
+          equals('Second phone'));
+    });
+
+    test('a greeting that is still asking is not announced, '
+        'the greeting after the choice is', () async {
+      final client = await WireClient.connect('127.0.0.1', _serverPort);
+      addTearDown(client.close);
+      await client.doInit();
+      await greet(client, 'ann-ask', name: 'Choosing phone', asking: true);
+
+      expect(await receiveJoined(client), isNull);
+      expect(getIt<Network>().superFanJoined.value, isNull);
+
+      await greet(client, 'ann-ask', name: 'Choosing phone',
+          plays: ['blinkblade@1']);
+      final joined = await receiveJoined(client);
+      expect(joined?.id, equals('ann-ask'));
+      expect(getIt<Network>().superFanJoined.value?.name,
+          equals('Choosing phone'));
+      expect(getIt<Network>().superFanJoined.value?.plays,
+          equals(['blinkblade@1']));
+    });
+
+    test('reconnecting with the same choice is not announced again', () async {
+      final first = await WireClient.connect('127.0.0.1', _serverPort);
+      addTearDown(first.close);
+      await first.doInit();
+      await greet(first, 'ann-re', name: 'Kitchen tablet',
+          plays: ['blinkblade@1']);
+      expect(await receiveJoined(first), isNotNull);
+
+      await first.close();
+      await waitUntilRosterEmpty();
+      getIt<Network>().superFanJoined.value = null;
+
+      final again = await WireClient.connect('127.0.0.1', _serverPort);
+      addTearDown(again.close);
+      await again.doInit();
+      await greet(again, 'ann-re', name: 'Kitchen tablet',
+          plays: ['blinkblade@1']);
+
+      expect(await receiveJoined(again), isNull);
+      expect(getIt<Network>().superFanJoined.value, isNull);
+    });
+
+    test('the same plays in another order are not announced again',
+        () async {
+      final client = await WireClient.connect('127.0.0.1', _serverPort);
+      addTearDown(client.close);
+      await client.doInit();
+      await greet(client, 'ann-order', name: 'Phone',
+          plays: ['blinkblade@1', 'geminate@2']);
+      expect(await receiveJoined(client), isNotNull);
+      getIt<Network>().superFanJoined.value = null;
+
+      // Initiative reordered the characters; the device re-sends its greeting
+      // with the same plays in the new order. Same set, so no new join.
+      await greet(client, 'ann-order', name: 'Phone',
+          plays: ['geminate@2', 'blinkblade@1']);
+      expect(await receiveJoined(client), isNull);
+      expect(getIt<Network>().superFanJoined.value, isNull);
+    });
+
+    test('a rename is not announced, a changed choice is', () async {
+      final client = await WireClient.connect('127.0.0.1', _serverPort);
+      addTearDown(client.close);
+      await client.doInit();
+      await greet(client, 'ann-ch', name: 'Old name',
+          plays: ['blinkblade@1']);
+      expect(await receiveJoined(client), isNotNull);
+      // The banner widget would have consumed the announcement by now; the
+      // server itself never clears it.
+      getIt<Network>().superFanJoined.value = null;
+
+      await greet(client, 'ann-ch', name: 'New name',
+          plays: ['blinkblade@1']);
+      expect(await receiveJoined(client), isNull);
+      expect(getIt<Network>().superFanJoined.value, isNull);
+
+      await greet(client, 'ann-ch', name: 'New name',
+          plays: ['geminate@2']);
+      final joined = await receiveJoined(client);
+      expect(joined?.id, equals('ann-ch'));
+      expect(getIt<Network>().superFanJoined.value?.name, equals('New name'));
+      expect(getIt<Network>().superFanJoined.value?.plays,
+          equals(['geminate@2']));
     });
   });
 

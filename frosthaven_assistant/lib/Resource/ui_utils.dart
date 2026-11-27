@@ -198,12 +198,12 @@ void openDialog(BuildContext context, Widget widget) {
   openDialogWithDismissOption(context, widget, true);
 }
 
-void openDialogWithDismissOption(
+Future<T?> openDialogWithDismissOption<T>(
     BuildContext context, Widget widget, bool dismissible) {
   // Guard against contexts with no Navigator ancestor (e.g. widget deactivated
   // mid-gesture: _parent is null before dispose() cancels the recognizer).
   // In release mode navigator! would throw TypeError; this early-outs safely.
-  if (Navigator.maybeOf(context) == null) return;
+  if (Navigator.maybeOf(context) == null) return Future<T?>.value();
   //could potentially modify edge insets based on screen width.
   Widget innerWidget = Stack(children: [
     Positioned(
@@ -213,7 +213,7 @@ void openDialogWithDismissOption(
           child: widget),
     )
   ]);
-  showDialog(
+  return showDialog<T>(
       barrierDismissible: dismissible,
       context: context,
       builder: (BuildContext context) => innerWidget);

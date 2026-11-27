@@ -9,10 +9,15 @@ import '../Model/campaign.dart';
 import '../Model/room.dart';
 import '../Resource/commands/command_l10n.dart';
 import '../Resource/game_data.dart';
+import '../Resource/game_methods.dart';
 import '../Resource/scaling.dart';
 import '../Resource/settings.dart';
 import '../Resource/ui_utils.dart';
+import '../services/network/client.dart';
+import '../services/network/network.dart';
+import '../services/network/superfan/fans.dart';
 import '../services/service_locator.dart';
+import '../l10n/app_localizations.dart';
 import 'LootDeckWidget/loot_deck_widget.dart';
 import 'MainList/main_list.dart';
 import 'attack_mode/attack_mode_controller.dart';
@@ -24,6 +29,7 @@ import 'character_amds_widget.dart';
 import 'empty_board_prompt.dart';
 import 'menus/AutoAddStandeeMenu/auto_add_standee_menu.dart';
 import 'menus/main_menu.dart';
+import 'menus/super_fan_choice_menu.dart';
 import 'view_models/character_amds_view_model.dart';
 import 'view_models/main_scaffold_view_model.dart';
 
@@ -139,6 +145,95 @@ class HeartAttackToastNotifier extends StatelessWidget {
   }
 }
 
+/// Swerski: opens the "who do you play?" picker when the greeted host has
+/// answered and this app run has not picked its characters yet. A game
+/// without characters keeps the question unasked for the next connection.
+class SuperFanChoiceDialogTrigger extends StatelessWidget {
+  const SuperFanChoiceDialogTrigger({super.key, this.network, this.client});
+
+  // injected for testing
+  final Network? network;
+  final Client? client;
+
+  @override
+  Widget build(BuildContext context) {
+    final network = this.network ?? getIt<Network>();
+    final client = this.client ?? getIt<Client>();
+    return ValueListenableBuilder<bool>(
+        valueListenable: network.superFanChoiceRequested,
+        builder: (context, requested, child) {
+          if (requested) {
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              if (!context.mounted) return;
+              network.superFanChoiceRequested.value = false;
+              final characters = GameMethods.getCurrentCharacters();
+              if (characters.isEmpty) {
+                client.superFanNothingToAsk();
+                return;
+              }
+              client.markSuperFanAsked();
+              openDialogWithDismissOption<List<String>>(
+                context,
+                SuperFanChoiceMenu(
+                  characters: characters,
+                  storedPlays: getIt<Settings>().devicePlays.value,
+                ),
+                true,
+              ).then((picks) {
+                if (picks != null) {
+                  client.saveSuperFanPlays(picks);
+                } else {
+                  // Dismissed without OK: the stored choice stands, but the
+                  // host still has to hear from this device, so it gets
+                  // announced instead of waiting for an answer.
+                  client.superFanNothingToAsk();
+                }
+              });
+            });
+          }
+          return const SizedBox(width: 0, height: 0);
+        });
+  }
+}
+
+/// Swerski: a one-passing toast when a device joins the SuperNetwork:
+/// "Da Bears! Hatchet's phone is on the SuperNetwork", or "The table" when it
+/// plays nothing. Reads the transient announcement the host sets for itself
+/// and the client sets from the host's `joined` message.
+class SuperFanJoinBannerNotifier extends StatelessWidget {
+  const SuperFanJoinBannerNotifier({super.key, this.network, this.gameState});
+
+  // injected for testing
+  final Network? network;
+  final GameState? gameState;
+
+  @override
+  Widget build(BuildContext context) {
+    final network = this.network ?? getIt<Network>();
+    return ValueListenableBuilder<SwerskiFan?>(
+        valueListenable: network.superFanJoined,
+        builder: (context, fan, child) {
+          if (fan != null) {
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              // Clear before showing so the next arrival can fire again.
+              network.superFanJoined.value = null;
+              if (!context.mounted) return;
+              final l10n = AppLocalizations.of(context);
+              if (l10n == null) return;
+              final names =
+                  GameMethods.superFanPlaysNames(fan.plays, gameState: gameState);
+              final text = names.isEmpty
+                  ? l10n.superFanBannerTable
+                  : l10n.superFanBannerPhone(names.join(' & '));
+              ScaffoldMessenger.of(context).removeCurrentSnackBar();
+              showToast(context, text);
+            });
+          }
+          return const SizedBox(width: 0, height: 0);
+        });
+  }
+}
+
 class AutoAddDialogTrigger extends StatelessWidget {
   const AutoAddDialogTrigger({super.key, this.gameState});
 
@@ -226,7 +321,9 @@ class MainScaffoldBody extends StatelessWidget {
                 )),
               const ToastNotifier(),
               const HeartAttackToastNotifier(),
+              const SuperFanJoinBannerNotifier(),
               const AutoAddDialogTrigger(),
+              const SuperFanChoiceDialogTrigger(),
               ValueListenableBuilder<Map<String, CampaignModel>>(
                   valueListenable: vm.modelData,
                   builder: (context, value, child) {

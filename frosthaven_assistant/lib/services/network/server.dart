@@ -14,8 +14,9 @@ import '../service_locator.dart';
 import 'communication.dart';
 import 'connection.dart';
 import 'network.dart';
-import 'superfan/preserve_swerski_fields.dart';
+import 'superfan/fans.dart';
 import 'superfan/greeting.dart';
+import 'superfan/preserve_swerski_fields.dart';
 import 'superfan/roster.dart';
 
 class Server extends GameServer {
@@ -24,6 +25,15 @@ class Server extends GameServer {
   final Connection _connection;
   final Settings? _settingsOverride;
   final SwerskiRoster _swerskiRoster;
+
+  /// The last fans list sent to the greeted devices, so an unchanged list is
+  /// not re-sent on every ping tick.
+  List<SwerskiFan>? _lastSentFans;
+
+  /// What each device id was last announced as playing. A disconnect does not
+  /// forget it — reconnecting is not joining again — only stopping the server
+  /// does.
+  final Map<String, List<String>> _announcedPlays = {};
 
   Server(
       {GameState? gameState,
@@ -48,6 +58,80 @@ class Server extends GameServer {
     } catch (_) {
       return lookupAppLocalizations(const Locale('en'));
     }
+  }
+
+  /// The host's own entry: it plays the whole table (brief rule 6), whatever
+  /// its own stored `devicePlays` hold — those belong to a device that joins
+  /// someone else's game. Listed first.
+  SwerskiFan _hostFan() => SwerskiFan(
+        id: _settings.deviceId.isEmpty ? 'local' : _settings.deviceId,
+        name: _settings.deviceName.value,
+        plays: const [],
+        host: true,
+      );
+
+  List<SwerskiFan> _currentFans() => [
+        _hostFan(),
+        for (final device in _swerskiRoster.devices)
+          SwerskiFan(id: device.id, name: device.name, plays: device.plays),
+      ];
+
+  /// Refills [Network.superFans]; when the list changed and the server runs,
+  /// re-sends it to every greeted device. Listing the roster prunes sockets
+  /// that died, so the ping tick picks those up too. A socket that [greeter]
+  /// marks — the one that just greeted — always gets the current list, even
+  /// when it is unchanged: after a quick reconnect the roster still holds the
+  /// device, so the diff alone would leave the new socket listless.
+  void _refreshSuperFans({Socket? greeter}) {
+    final fans = _currentFans();
+    final last = _lastSentFans;
+    final changed = last == null ||
+        SwerskiFan.encodeFans(fans) != SwerskiFan.encodeFans(last);
+    if (changed && serverSocket != null) {
+      final message = SwerskiFan.encodeFans(fans);
+      for (final device in _swerskiRoster.devices) {
+        if (identical(device.socket, greeter)) continue;
+        sendToOnly(message, device.socket);
+      }
+      _lastSentFans = fans;
+    }
+    if (greeter != null && serverSocket != null) {
+      sendToOnly(SwerskiFan.encodeFans(fans), greeter);
+    }
+    getIt<Network>().superFans.value = fans;
+  }
+
+  /// Swerski: the host renamed itself, so its own entry and every greeted
+  /// device get the new name. Nothing is announced: a rename is not a join.
+  void refreshHostIdentity() {
+    if (serverSocket == null) return;
+    _refreshSuperFans();
+  }
+
+  /// Announces a device that finished choosing: sent once per id, then again
+  /// only when its plays change. Renames and reconnects stay quiet, and so
+  /// does the same set of plays in a new order — initiative reorders the
+  /// character list without anything being chosen anew.
+  void _announceJoin(SwerskiGreeting greeting) {
+    final previous = _announcedPlays[greeting.id];
+    if (previous != null &&
+        setEquals(Set.of(previous), Set.of(greeting.plays))) {
+      return;
+    }
+    _announcedPlays[greeting.id] = List.of(greeting.plays);
+    final message = SwerskiFan.encodeJoined(SwerskiFan(
+      id: greeting.id,
+      name: greeting.name,
+      plays: greeting.plays,
+    ));
+    for (final device in _swerskiRoster.devices) {
+      sendToOnly(message, device.socket);
+    }
+    getIt<Network>().superFanJoined.value = SwerskiFan(
+      id: greeting.id,
+      name: greeting.name,
+      plays: greeting.plays,
+    );
   }
 
   @override
@@ -79,6 +163,13 @@ class Server extends GameServer {
     _gameState.commandIndex.value = -1;
     _gameState.resetCommandHistory();
     _pinging = false;
+    _lastSentFans = null;
+    _announcedPlays.clear();
+    // The server calls this at the end of starting and again when stopping.
+    // Started: the list starts out holding the host itself, so Settings shows
+    // the SuperNetwork block before anyone joins. Stopped: empty.
+    getIt<Network>().superFans.value = serverEnabled ? _currentFans() : const [];
+    getIt<Network>().superFanJoined.value = null;
   }
 
   @override
@@ -196,6 +287,9 @@ class Server extends GameServer {
         if (serverSocket == null || !_settings.server.value) {
           return;
         }
+        // A socket that died since the last tick drops out of the roster when
+        // it is listed; push the new list to the devices that are still there.
+        _refreshSuperFans();
         // Skip the broadcast while backgrounded — the radio wakeup costs far
         // more battery than the keepalive is worth. Keep rescheduling so the
         // chain resumes on foreground. (Android hosting keeps its foreground
@@ -215,6 +309,8 @@ class Server extends GameServer {
       if (greeting != null) {
         _swerskiRoster.greet(greeting, client);
         sendToOnly(SwerskiGreeting.encodeAck(), client);
+        _refreshSuperFans(greeter: client);
+        if (!greeting.asking) _announceJoin(greeting);
       }
       // Anything else Swerski-prefixed is ignored. Game state and the command
       // index are never touched by Swerski traffic.
@@ -232,12 +328,16 @@ class Server extends GameServer {
   void removeClientConnection(Socket client) {
     _connection.remove(client);
     _swerskiRoster.drop(client);
+    _refreshSuperFans();
   }
 
   @override
   void removeAllClientConnections() {
     _connection.removeAll();
     _swerskiRoster.clear();
+    _lastSentFans = null;
+    _announcedPlays.clear();
+    getIt<Network>().superFans.value = const [];
   }
 
   static const int _defaultPort = 4567;

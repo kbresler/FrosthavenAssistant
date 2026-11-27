@@ -13,6 +13,14 @@ void main() {
     test('ack is the bare prefix, token and version', () {
       expect(SwerskiGreeting.encodeAck(), equals('swerski:Da Bears! superfan:1'));
     });
+
+    test('asking only appears when set', () {
+      expect(
+        SwerskiGreeting.encode(id: 'dev-1', asking: true),
+        contains('"asking":true'),
+      );
+      expect(SwerskiGreeting.encode(id: 'dev-1'), isNot(contains('asking')));
+    });
   });
 
   group('round trip', () {
@@ -35,6 +43,17 @@ void main() {
       expect(parsed.id, equals('dev-2'));
       expect(parsed.name, isEmpty);
       expect(parsed.plays, isEmpty);
+    });
+
+    test('asking comes back, and absence means false', () {
+      final asking = SwerskiGreeting.parse(
+        SwerskiGreeting.encode(id: 'dev-1', asking: true),
+      )!;
+      expect(asking.asking, isTrue);
+      final plain = SwerskiGreeting.parse(
+        SwerskiGreeting.encode(id: 'dev-1'),
+      )!;
+      expect(plain.asking, isFalse);
     });
   });
 
@@ -210,6 +229,15 @@ void main() {
         SwerskiGreeting.parse(
           'swerski:Da Bears! superfan:1 {"id":"${'i' * 65}",'
           '"name":"","plays":[]}',
+        ),
+        isNull,
+      );
+    });
+
+    test('a non-bool asking is ignored', () {
+      expect(
+        SwerskiGreeting.parse(
+          'swerski:Da Bears! superfan:1 {"id":"d","asking":"yes"}',
         ),
         isNull,
       );
