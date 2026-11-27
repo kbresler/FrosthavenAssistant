@@ -236,6 +236,9 @@ class AppLocalizationsTh extends AppLocalizations {
   String get settingsHeartAttacks => 'Heart attacks';
 
   @override
+  String get settingsDeviceName => 'Device name';
+
+  @override
   String heartAttackBadge(int count) {
     String _temp0 = intl.Intl.pluralLogic(
       count,

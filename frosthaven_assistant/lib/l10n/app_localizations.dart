@@ -533,6 +533,12 @@ abstract class AppLocalizations {
   /// **'Heart attacks'**
   String get settingsHeartAttacks;
 
+  /// No description provided for @settingsDeviceName.
+  ///
+  /// In en, this message translates to:
+  /// **'Device name'**
+  String get settingsDeviceName;
+
   /// No description provided for @heartAttackBadge.
   ///
   /// In en, this message translates to:

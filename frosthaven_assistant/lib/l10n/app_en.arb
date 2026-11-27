@@ -108,6 +108,7 @@
   "settingsParchmentMenus": "Parchment menus and popups",
   "settingsAttackSeveral": "Attack several monsters at once",
   "settingsHeartAttacks": "Heart attacks",
+  "settingsDeviceName": "Device name",
   "heartAttackBadge": "{count, plural, =1{1 major heart attack} other{{count} major heart attacks}}",
   "@heartAttackBadge": { "placeholders": { "count": { "type": "int" } } },
   "heartAttackLittleBadge": "{count, plural, =1{1 little heart attack} other{{count} little heart attacks}}",

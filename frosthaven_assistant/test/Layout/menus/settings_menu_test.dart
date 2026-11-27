@@ -570,5 +570,49 @@ void main() {
       expect(dialogText,
           contains('infrequent use and low battery capacity devices'));
     });
+
+    testWidgets('Device name field shows the saved name and saves typing',
+        (WidgetTester tester) async {
+      final settings = getIt<Settings>();
+      final before = settings.deviceName.value;
+      addTearDown(() => settings.deviceName.value = before);
+      settings.deviceName.value = 'Table phone';
+
+      await pumpMenu(tester);
+      expect(find.text('Device name'), findsOneWidget);
+      expect(find.text('Table phone'), findsOneWidget);
+
+      final field = find.widgetWithText(TextField, 'Device name');
+      await tester.enterText(field, 'Kitchen tablet');
+      await tester.pump();
+      expect(settings.deviceName.value, 'Kitchen tablet');
+    });
+
+    testWidgets('Device name field caps at the greeting limit of 30',
+        (WidgetTester tester) async {
+      final settings = getIt<Settings>();
+      final before = settings.deviceName.value;
+      addTearDown(() => settings.deviceName.value = before);
+
+      await pumpMenu(tester);
+      final field = find.widgetWithText(TextField, 'Device name');
+      await tester.enterText(field, 'x' * 35);
+      await tester.pump();
+      // greeting.dart cuts the name at 30; the field must cap the same way so
+      // what the user sees is what gets sent.
+      expect(settings.deviceName.value, 'x' * 30);
+    });
+
+    testWidgets('Device name field is left-aligned with the other rows',
+        (WidgetTester tester) async {
+      await pumpMenu(tester);
+      // The rows around it (headings, labels, the Language row) all start at
+      // the label padding on the left; a centered field sticks out.
+      final fieldLeft =
+          tester.getRect(find.widgetWithText(TextField, 'Device name')).left;
+      final languageLeft = tester.getRect(find.text('Language:')).left;
+      expect(fieldLeft, moreOrLessEquals(languageLeft, epsilon: 0.5),
+          reason: 'the field must start where the Language label starts');
+    });
   });
 }

@@ -31,6 +31,8 @@ class SettingsMenu extends StatefulWidget {
   static const double _kBarScaleMin = 0.8;
   static const double _kLabelPaddingLeft = 16.0;
   static const double _kLabelPaddingTop = 10.0;
+  static const double _kDeviceNameWidth = 300.0;
+  static const int _kDeviceNameMaxLength = 30;
 
   // Maps locale code → native display name. Extend when adding translations.
   static const Map<String, String> _kLocales = {
@@ -59,10 +61,24 @@ class SettingsMenu extends StatefulWidget {
 }
 
 class SettingsMenuState extends State<SettingsMenu> {
+  final TextEditingController _deviceNameController = TextEditingController();
+
   Settings get settings => widget.settings ?? getIt<Settings>();
   GameState get _gameState => widget.gameState ?? getIt<GameState>();
   Network get _network => widget.network ?? getIt<Network>();
   Client get _client => widget.client ?? getIt<Client>();
+
+  @override
+  void initState() {
+    super.initState();
+    _deviceNameController.text = settings.deviceName.value;
+  }
+
+  @override
+  void dispose() {
+    _deviceNameController.dispose();
+    super.dispose();
+  }
 
   Widget _label(String text) => Container(
         constraints: const BoxConstraints(minWidth: double.infinity),
@@ -148,6 +164,30 @@ class SettingsMenuState extends State<SettingsMenu> {
                   settings.heartAttacks.value = v;
                   settings.saveToDisk();
                 }),
+            // Left-aligned and indented like the labels and the Language row;
+            // a bare SizedBox sits centred in the menu's Column.
+            Align(
+              alignment: Alignment.centerLeft,
+              child: Padding(
+                padding:
+                    const EdgeInsets.only(left: SettingsMenu._kLabelPaddingLeft),
+                child: SizedBox(
+                  width: SettingsMenu._kDeviceNameWidth,
+                  child: TextField(
+                    controller: _deviceNameController,
+                    maxLength: SettingsMenu._kDeviceNameMaxLength,
+                    decoration: InputDecoration(
+                      counterText: "",
+                      labelText: l10n.settingsDeviceName,
+                    ),
+                    onChanged: (value) {
+                      settings.deviceName.value = value;
+                      settings.saveToDisk();
+                    },
+                  ),
+                ),
+              ),
+            ),
 
             // ── Gameplay ────────────────────────────────────────────────
             SettingsHeading(l10n.settingsGroupGameplay),
