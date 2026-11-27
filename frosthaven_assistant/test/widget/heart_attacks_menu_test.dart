@@ -60,6 +60,11 @@ void main() {
     ChangeHealthCommand(-1000, heroId, heroId, gameState: gs).execute();
   }
 
+  Finder stepperAsset(String name) => find.byWidgetPredicate((w) =>
+      w is Image &&
+      w.image is AssetImage &&
+      (w.image as AssetImage).assetName == 'assets/images/psd/$name.png');
+
   Future<void> openEditorViaCard(WidgetTester tester) async {
     await tester.pumpWidget(board());
     hit();
@@ -249,6 +254,47 @@ void main() {
     final plus = find.byKey(HeartAttacksMenu.plusKey(
         HeartAttackKind.major, HeartAttackPeriod.earlier));
     expect(tester.widget<IconButton>(plus).onPressed, isNull);
+  });
+
+  testWidgets('the steppers use the app sub/add images', (tester) async {
+    await tester.pumpWidget(
+        testApp(Scaffold(body: HeartAttacksMenu(characterId: heroId))));
+    await tester.pumpAndSettle();
+    for (final kind in HeartAttackKind.values) {
+      for (final period in HeartAttackPeriod.values) {
+        expect(
+            find.descendant(
+                of: find.byKey(HeartAttacksMenu.minusKey(kind, period)),
+                matching: stepperAsset('sub')),
+            findsOneWidget);
+        expect(
+            find.descendant(
+                of: find.byKey(HeartAttacksMenu.plusKey(kind, period)),
+                matching: stepperAsset('add')),
+            findsOneWidget);
+      }
+    }
+  });
+
+  testWidgets('a disabled stepper button is faded, an enabled one is solid',
+      (tester) async {
+    await tester.pumpWidget(
+        testApp(Scaffold(body: HeartAttacksMenu(characterId: heroId))));
+    await tester.pumpAndSettle();
+    final minus = find.byKey(HeartAttacksMenu.minusKey(
+        HeartAttackKind.little, HeartAttackPeriod.thisScenario));
+    final plus = find.byKey(HeartAttacksMenu.plusKey(
+        HeartAttackKind.little, HeartAttackPeriod.thisScenario));
+    double fade(Finder button) => tester
+        .widget<Opacity>(
+            find.descendant(of: button, matching: find.byType(Opacity)))
+        .opacity;
+    // At 0 the minus is disabled and must look it; the plus is live.
+    expect(fade(minus), lessThan(1.0));
+    expect(fade(plus), 1.0);
+    await tester.tap(plus);
+    await tester.pumpAndSettle();
+    expect(fade(minus), 1.0);
   });
 
   testWidgets('each row label carries its kielbasa, pale for little',

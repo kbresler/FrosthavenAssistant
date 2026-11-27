@@ -5,6 +5,7 @@ import 'package:frosthaven_assistant/Resource/ui_utils.dart';
 import 'package:frosthaven_assistant/l10n/app_localizations.dart';
 import 'package:frosthaven_assistant/services/translation_service.dart';
 
+import '../../Resource/app_constants.dart';
 import '../../Resource/settings.dart';
 import '../../Resource/state/game_state.dart';
 import '../../services/service_locator.dart';
@@ -41,10 +42,12 @@ class HeartAttacksMenu extends StatefulWidget {
 }
 
 class _HeartAttacksMenuState extends State<HeartAttacksMenu> {
-  static const double _kMenuWidth = 320.0;
+  // Label + two steppers of (kButtonSize + 30 + kButtonSize), plus padding.
+  static const double _kMenuWidth = 340.0;
   static const double _kLabelWidth = 88.0;
   static const double _kIconHeight = 12.0;
   static const double _kIconGap = 6.0;
+  static const double _kDisabledOpacity = 0.3;
 
   GameState get _gameState => widget.gameState ?? getIt<GameState>();
 
@@ -68,16 +71,13 @@ class _HeartAttacksMenuState extends State<HeartAttacksMenu> {
     return Row(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
-        IconButton(
-          key: HeartAttacksMenu.minusKey(kind, period),
+        _stepButton(
+          scale,
+          HeartAttacksMenu.minusKey(kind, period),
+          'assets/images/psd/sub.png',
           // Disabled at the bounds: a tap that changes nothing would still
           // leave an empty Undo step.
-          onPressed: value > 0 ? () => _adjust(kind, period, -1) : null,
-          iconSize: 18 * scale,
-          visualDensity: VisualDensity.compact,
-          padding: EdgeInsets.zero,
-          constraints: const BoxConstraints(),
-          icon: const Icon(Icons.remove),
+          value > 0 ? () => _adjust(kind, period, -1) : null,
         ),
         SizedBox(
           width: 30 * scale,
@@ -87,18 +87,32 @@ class _HeartAttacksMenuState extends State<HeartAttacksMenu> {
             style: getTitleTextStyle(scale),
           ),
         ),
-        IconButton(
-          key: HeartAttacksMenu.plusKey(kind, period),
-          onPressed: value < AdjustHeartAttacksCommand.max
+        _stepButton(
+          scale,
+          HeartAttacksMenu.plusKey(kind, period),
+          'assets/images/psd/add.png',
+          value < AdjustHeartAttacksCommand.max
               ? () => _adjust(kind, period, 1)
               : null,
-          iconSize: 18 * scale,
-          visualDensity: VisualDensity.compact,
-          padding: EdgeInsets.zero,
-          constraints: const BoxConstraints(),
-          icon: const Icon(Icons.add),
         ),
       ],
+    );
+  }
+
+  Widget _stepButton(
+      double scale, Key key, String asset, VoidCallback? onPressed) {
+    return SizedBox(
+      width: kButtonSize * scale,
+      height: kButtonSize * scale,
+      child: IconButton(
+        key: key,
+        onPressed: onPressed,
+        // An image does not dim itself when the button is disabled.
+        icon: Opacity(
+          opacity: onPressed == null ? _kDisabledOpacity : 1.0,
+          child: Image.asset(asset),
+        ),
+      ),
     );
   }
 
