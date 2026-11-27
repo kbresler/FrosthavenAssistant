@@ -352,20 +352,35 @@ SnackBar _toastSnackBar(BuildContext context, String text,
   );
 }
 
-void showToast(BuildContext context, String text) {
-  if (context.mounted) {
-    ScaffoldMessenger.of(context).showSnackBar(_toastSnackBar(context, text));
-  }
+ScaffoldFeatureController<SnackBar, SnackBarClosedReason>? showToast(
+    BuildContext context, String text) {
+  if (!context.mounted) return null;
+  return ScaffoldMessenger.of(context).showSnackBar(_toastSnackBar(context, text));
 }
 
+/// Swerski: the heart-attack line currently holding the message bar. While
+/// it is up, [showToastSticky] callers hold back: the line gets the slot
+/// first, the message waits. UI-only — never game state.
+final ValueNotifier<String?> heartAttackLineShown = ValueNotifier<String?>(null);
+
+/// Swerski: how many heart-attack lines have been shown. A wound message
+/// that waited behind a line re-arms its visible seconds when this moves;
+/// a line's own close callback checks it so a newer line is never wiped by
+/// the old line's dismissal.
+int heartAttackLineCount = 0;
+
 Future<void> showToastSticky(BuildContext context, String text,
-    {GameState? gameState}) async {
+    {GameState? gameState, bool Function()? clearOnDismiss}) async {
   if (context.mounted) {
     await ScaffoldMessenger.of(context)
         .showSnackBar(_toastSnackBar(context, text,
             duration: const Duration(days: 1)))
         .closed;
-    if ((gameState ?? getIt<GameState>()).toastMessage.value == text) {
+    // A dismissal while a heart-attack line holds the bar is the line taking
+    // the slot, not the message going away: it stays for later.
+    final clears = heartAttackLineShown.value == null &&
+        (clearOnDismiss == null || clearOnDismiss());
+    if (clears && (gameState ?? getIt<GameState>()).toastMessage.value == text) {
       GameUtilMethods.setToastMessage("");
     }
   }

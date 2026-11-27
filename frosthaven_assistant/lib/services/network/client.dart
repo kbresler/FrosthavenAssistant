@@ -16,6 +16,7 @@ import '../service_locator.dart';
 import 'connection.dart';
 import 'superfan/fans.dart';
 import 'superfan/greeting.dart';
+import 'superfan/toast.dart';
 
 class Client {
   String _leftOverMessage = "";
@@ -280,6 +281,16 @@ class Client {
   }
 
   void _handleContent(String message) {
+    if (SwerskiToast.isToastMessage(message)) {
+      // The host's heart-attack line for the whole table. A malformed line
+      // is ignored, and a device with "Heart attacks" off shows nothing.
+      // Must come before the greeting branch: `swerski:` is its catch-all.
+      final line = SwerskiToast.parse(message);
+      if (line != null && _settings.heartAttacks.value) {
+        _gameState.heartAttackToast.value = line;
+      }
+      return;
+    }
     if (SwerskiFan.isFansMessage(message)) {
       // The host's SuperNetwork roster; a malformed list is ignored, the old
       // one stays.

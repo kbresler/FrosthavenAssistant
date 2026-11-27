@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:frosthaven_assistant/Layout/ModifierDeckWidget/modifier_deck_widget.dart';
 import 'package:frosthaven_assistant/Layout/background.dart';
@@ -63,7 +65,7 @@ class MainScaffold extends StatelessWidget {
   }
 }
 
-class ToastNotifier extends StatelessWidget {
+class ToastNotifier extends StatefulWidget {
   static const int _kWoundToastSeconds = 6;
 
   const ToastNotifier({super.key, this.gameState});
@@ -72,35 +74,80 @@ class ToastNotifier extends StatelessWidget {
   final GameState? gameState;
 
   @override
+  State<ToastNotifier> createState() => _ToastNotifierState();
+}
+
+class _ToastNotifierState extends State<ToastNotifier> {
+  /// Bumped per show attempt: a wound timer from a replaced or re-queued
+  /// message must not clear the bar.
+  int _showSeq = 0;
+
+  /// The running wound self-clear, cancelled on dispose so a late-shown
+  /// wound cannot outlive the widget.
+  Timer? _woundTimer;
+
+  GameState get _gs => widget.gameState ?? getIt<GameState>();
+
+  @override
+  void dispose() {
+    _showSeq++;
+    _woundTimer?.cancel();
+    heartAttackLineShown.removeListener(_lineGone);
+    super.dispose();
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    // Swerski: when the heart-attack line lets go of the bar, show whatever
+    // message waited for it.
+    heartAttackLineShown.addListener(_lineGone);
+  }
+
+  void _lineGone() {
+    if (heartAttackLineShown.value != null || !mounted) return;
+    Future.delayed(const Duration(milliseconds: 200), () {
+      if (!mounted) return;
+      final message = _gs.toastMessage.value;
+      if (message != "") _show(message);
+    });
+  }
+
+  void _show(String message) {
+    if (heartAttackLineShown.value != null) return; // the line has the bar
+    final int seq = ++_showSeq;
+    ScaffoldMessenger.of(context).removeCurrentSnackBar();
+    showToastSticky(context, message, clearOnDismiss: () => _showSeq == seq);
+    // Wound messages are short-lived, also when undo or a network update
+    // brings an old one back. The seconds count from when the wound shows.
+    if (message.startsWith(commandL10n.toastWoundDamage(''))) {
+      _woundTimer = Timer(const Duration(seconds: ToastNotifier._kWoundToastSeconds), () {
+        if (!mounted || _showSeq != seq) return;
+        if (_gs.toastMessage.value == message) {
+          GameUtilMethods.setToastMessage('', gameState: _gs);
+        }
+      });
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final gameState = this.gameState ?? getIt<GameState>();
     return ValueListenableBuilder<String>(
-        valueListenable: gameState.toastMessage,
+        valueListenable: _gs.toastMessage,
         builder: (context, value, child) {
+          final messenger = ScaffoldMessenger.of(context);
           Future.delayed(const Duration(milliseconds: 200), () {
-            String message = gameState.toastMessage.value;
+            if (!mounted) return;
+            final message = _gs.toastMessage.value;
             if (message != "") {
-              if (context.mounted) {
-                // Swerski: the newest message replaces the one on screen
-                // instead of queueing behind a sticky message forever.
-                ScaffoldMessenger.of(context).removeCurrentSnackBar();
-                showToastSticky(context, message);
-                // Wound messages are short-lived, also when undo or a
-                // network update brings an old one back.
-                if (message.startsWith(commandL10n.toastWoundDamage(''))) {
-                  Future.delayed(const Duration(seconds: _kWoundToastSeconds),
-                      () {
-                    if (gameState.toastMessage.value == message) {
-                      GameUtilMethods.setToastMessage('',
-                          gameState: gameState);
-                    }
-                  });
-                }
-              }
-            } else {
-              if (context.mounted) {
-                ScaffoldMessenger.of(context).clearSnackBars();
-              }
+              // Swerski: the newest message replaces the one on screen
+              // instead of queueing behind a sticky message forever — but a
+              // heart-attack line on the bar gets shown first, and this one
+              // waits for it.
+              _show(message);
+            } else if (heartAttackLineShown.value == null) {
+              // Clearing the message must not wipe a line off the bar.
+              messenger.clearSnackBars();
             }
           });
 
@@ -114,7 +161,9 @@ class ToastNotifier extends StatelessWidget {
 
 /// Swerski: shows a heart-attack reply line as a single passing toast, then
 /// clears it. Reads the transient (non-synced, non-undoable) notifier the
-/// health command sets on the device that applied the change.
+/// health command sets on the device that applied the change. The line takes
+/// the message bar from any sticky message, which shows again once the line
+/// is gone (see [ToastNotifier]).
 class HeartAttackToastNotifier extends StatelessWidget {
   const HeartAttackToastNotifier({super.key, this.gameState});
 
@@ -131,10 +180,7 @@ class HeartAttackToastNotifier extends StatelessWidget {
             WidgetsBinding.instance.addPostFrameCallback((_) {
               // Clear before showing so the same line can fire again later.
               gameState.heartAttackToast.value = "";
-              if (context.mounted) {
-                ScaffoldMessenger.of(context).removeCurrentSnackBar();
-                showToast(context, message);
-              }
+              if (context.mounted) _showLine(context, message);
             });
           }
           return const SizedBox(
@@ -142,6 +188,24 @@ class HeartAttackToastNotifier extends StatelessWidget {
             height: 0,
           );
         });
+  }
+
+  void _showLine(BuildContext context, String line) {
+    // Always take the bar, whatever is on it: a sticky message (a wound, a
+    // reminder, even the day-long network error toast) must never queue the
+    // line behind it. [showToastSticky] callers see heartAttackLineShown set
+    // first, so they know this removal is not their message going away.
+    heartAttackLineCount++;
+    heartAttackLineShown.value = line;
+    final int seq = heartAttackLineCount;
+    ScaffoldMessenger.of(context).removeCurrentSnackBar();
+    showToast(context, line)?.closed.whenComplete(() {
+      // Only this line's own close lets go: a newer line that already took
+      // the bar must not be cleared by this one's dismissal.
+      if (heartAttackLineCount == seq && heartAttackLineShown.value == line) {
+        heartAttackLineShown.value = null;
+      }
+    });
   }
 }
 

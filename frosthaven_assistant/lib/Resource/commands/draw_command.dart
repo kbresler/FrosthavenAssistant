@@ -1,9 +1,9 @@
 import '../../Layout/MainList/main_list.dart';
 import '../../services/service_locator.dart';
-import '../../services/translation_service.dart';
 import '../enums.dart';
 import '../game_methods.dart';
 import '../heart_attack.dart';
+import '../heart_attack_lines.dart';
 import '../settings.dart';
 import '../state/game_state.dart';
 import 'command_l10n.dart';
@@ -46,10 +46,6 @@ class DrawCommand extends Command with TurnStartWounds {
     if (settings == null || !settings.heartAttacks.value) {
       return;
     }
-    if (!getIt.isRegistered<TranslationService>()) {
-      return;
-    }
-    final translation = getIt<TranslationService>();
     final resting = GameMethods.getCurrentCharactersForState(_gameState)
         .where((c) =>
             !GameMethods.isObjectiveOrEscort(c.characterClass) &&
@@ -66,10 +62,7 @@ class DrawCommand extends Command with TurnStartWounds {
         c.characterState.littleHeartAttacks.value + 1,
       );
     }
-    final names =
-        resting.map((c) => translation.t(c.characterClass.name)).toList();
-    _gameState.heartAttackToast.value =
-        heartAttackRecoveringLine(names, commandL10n);
+    publishHeartAttackLine(heartAttackRestingLine(resting), _gameState);
   }
 
   @override

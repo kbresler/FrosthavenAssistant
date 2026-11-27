@@ -4,7 +4,10 @@ import 'dart:io';
 import 'dart:ui' show Locale;
 
 import 'package:flutter/foundation.dart';
+import 'package:frosthaven_assistant/Resource/enums.dart';
 import 'package:frosthaven_assistant/Resource/game_event.dart';
+import 'package:frosthaven_assistant/Resource/game_methods.dart';
+import 'package:frosthaven_assistant/Resource/heart_attack_lines.dart';
 import 'package:frosthaven_assistant/Resource/settings.dart';
 import 'package:frosthaven_assistant/Resource/state/game_state.dart';
 import 'package:frosthaven_assistant_server/game_server.dart';
@@ -18,6 +21,7 @@ import 'superfan/fans.dart';
 import 'superfan/greeting.dart';
 import 'superfan/preserve_swerski_fields.dart';
 import 'superfan/roster.dart';
+import 'superfan/toast.dart';
 
 class Server extends GameServer {
   final GameState _gameState;
@@ -192,6 +196,10 @@ class Server extends GameServer {
 
   @override
   void updateStateFromMessage(StateUpdateMessage message, Socket client) {
+    // Swerski: a phone's action arrives as a whole state, so its heart
+    // attacks are spotted by comparing the table before and after the load.
+    final heartAttackBefore = _heartAttackWatch();
+    final roundBefore = _gameState.roundState.value;
     if (message.index > _gameState.commandDescriptions.length) {
       //invalid: index too high. send correction to clients
       String commandDescription = "";
@@ -227,6 +235,7 @@ class Server extends GameServer {
             state: _lastSavedState(),
           ).encode(),
           client);
+      _announceHeartAttacks(heartAttackBefore, roundBefore);
     } else {
       log('Got same or lower index. ignoring: received index: ${message.indexString} current index ${_gameState.commandIndex.value}');
 
@@ -361,6 +370,81 @@ class Server extends GameServer {
   @override
   void sendToOthers(String data, Socket client) {
     _communication.sendToAllExcept(client, data);
+  }
+
+  /// Swerski: shows [line] on every greeted device. Nothing happens while the
+  /// server is not running. The host's "Heart attacks" setting does NOT gate
+  /// this: a host that hides the lines itself still passes on the ones its
+  /// phones produce.
+  void sendSuperFanToast(String line) {
+    if (serverSocket == null) return;
+    final message = SwerskiToast.encode(line);
+    for (final device in _swerskiRoster.devices) {
+      sendToOnly(message, device.socket);
+    }
+  }
+
+  /// Where the health and heart-attack tallies stood before a state load,
+  /// per tracked character. Objectives and Escorts are not tracked.
+  Map<String, ({int health, int major, int little})> _heartAttackWatch() {
+    final watch = <String, ({int health, int major, int little})>{};
+    for (final item in _gameState.currentList) {
+      if (item is Character &&
+          !GameMethods.isObjectiveOrEscort(item.characterClass)) {
+        final state = item.characterState;
+        watch[item.id] = (
+          health: state.health.value,
+          major: state.heartAttacks.value,
+          little: state.littleHeartAttacks.value,
+        );
+      }
+    }
+    return watch;
+  }
+
+  /// Swerski: spots the heart attacks a phone's update just caused and shows
+  /// one line for them, the host writing it. Major: a tracked character went
+  /// from above 0 to exactly 0 with its count up. Little: a count up while
+  /// the round went from choosing initiative to playing turns. Little wins,
+  /// and among majors the last one in list order. The line goes to every
+  /// greeted device — including the phone that caused it — and this host's
+  /// "Heart attacks" setting only decides whether the host shows it too.
+  void _announceHeartAttacks(
+    Map<String, ({int health, int major, int little})> before,
+    RoundState roundBefore,
+  ) {
+    final majors = <Character>[];
+    final resting = <Character>[];
+    final roundChanged = _gameState.roundState.value == RoundState.playTurns &&
+        roundBefore == RoundState.chooseInitiative;
+    for (final item in _gameState.currentList) {
+      if (item is! Character ||
+          GameMethods.isObjectiveOrEscort(item.characterClass)) {
+        continue;
+      }
+      final was = before[item.id];
+      if (was == null) continue; // newly added: not this phone's doing
+      final state = item.characterState;
+      if (was.health > 0 &&
+          state.health.value == 0 &&
+          state.heartAttacks.value > was.major) {
+        majors.add(item);
+      }
+      if (roundChanged && state.littleHeartAttacks.value > was.little) {
+        resting.add(item);
+      }
+    }
+    String? line;
+    if (resting.isNotEmpty) {
+      line = heartAttackRestingLine(resting);
+    } else if (majors.isNotEmpty) {
+      line = heartAttackReplyLine(majors.last, _gameState);
+    }
+    if (line == null || line.isEmpty) return;
+    sendSuperFanToast(line);
+    if (_settings.heartAttacks.value) {
+      _gameState.heartAttackToast.value = line;
+    }
   }
 
   @override

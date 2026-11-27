@@ -16,6 +16,7 @@ import 'package:frosthaven_assistant/services/network/connection.dart';
 import 'package:frosthaven_assistant/services/network/network.dart';
 import 'package:frosthaven_assistant/services/network/superfan/fans.dart';
 import 'package:frosthaven_assistant/services/network/superfan/greeting.dart';
+import 'package:frosthaven_assistant/services/network/superfan/toast.dart';
 import 'package:frosthaven_assistant_server/game_server.dart';
 import 'package:get_it/get_it.dart';
 import 'package:mockito/annotations.dart';
@@ -344,6 +345,60 @@ void main() {
     });
   });
 
+  test('the host toast line shows on the phone', () {
+    final host = _FakeHost();
+    final client = host.client();
+    _gameState.heartAttackToast.value = '';
+
+    fakeAsync((async) {
+      client.connect(_address);
+      async.elapse(const Duration(milliseconds: 50));
+
+      host.push('S3nD:${SwerskiToast.encode('Kling: write it down.')}[EOM]');
+      _gameState.heartAttackToast.value.shouldBeEqualTo(
+          'Kling: write it down.');
+    });
+  });
+
+  test('a toast stays hidden when Heart attacks is off', () {
+    final host = _FakeHost();
+    final client = host.client();
+    host.heartAttacks.value = false;
+    _gameState.heartAttackToast.value = '';
+
+    fakeAsync((async) {
+      client.connect(_address);
+      async.elapse(const Duration(milliseconds: 50));
+
+      host.push('S3nD:${SwerskiToast.encode('nobody looks at these')}[EOM]');
+      _gameState.heartAttackToast.value.shouldBeEmpty();
+    });
+  });
+
+  test('a malformed toast changes nothing', () {
+    final host = _FakeHost();
+    final client = host.client();
+    _gameState.heartAttackToast.value = '';
+
+    fakeAsync((async) {
+      client.connect(_address);
+      async.elapse(const Duration(milliseconds: 50));
+
+      for (final junk in [
+        'swerski:toast {not json}',
+        'swerski:toast',
+        'swerski:toast {"line":5}',
+        'swerski:toast {"line":""}',
+      ]) {
+        host.push('S3nD:$junk[EOM]');
+      }
+
+      _gameState.heartAttackToast.value.shouldBeEmpty();
+      // And it is not mistaken for the greeting ack.
+      host.hostGreeted.value.shouldBeFalse();
+    });
+  });
+
   test('disconnect clears the SuperNetwork list', () {
     final host = _FakeHost();
     final client = host.client();
@@ -592,10 +647,12 @@ class _FakeHost {
   final superFanChoiceRequested = ValueNotifier<bool>(false);
   final devicePlays = ValueNotifier<List<String>>([]);
   final deviceName = ValueNotifier<String>('');
+  final heartAttacks = ValueNotifier<bool>(true);
 
   _FakeHost() {
     when(settings.lastKnownPort).thenReturn('4567');
     when(settings.locale).thenReturn(ValueNotifier<String>('en'));
+    when(settings.heartAttacks).thenReturn(heartAttacks);
     when(settings.client)
         .thenReturn(ValueNotifier<ClientState>(ClientState.disconnected));
     when(settings.deviceId).thenReturn('device-1');

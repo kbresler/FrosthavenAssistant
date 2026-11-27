@@ -7,9 +7,12 @@ import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:frosthaven_assistant/Resource/commands/add_character_command.dart';
 import 'package:frosthaven_assistant/Resource/commands/adjust_heart_attacks_command.dart';
+import 'package:frosthaven_assistant/Resource/commands/next_round_command.dart';
 import 'package:frosthaven_assistant/Resource/commands/remove_character_command.dart';
 import 'package:frosthaven_assistant/Resource/commands/set_level_command.dart';
+import 'package:frosthaven_assistant/Resource/enums.dart';
 import 'package:frosthaven_assistant/Resource/game_data.dart';
+import 'package:frosthaven_assistant/Resource/heart_attack_lines.dart';
 import 'package:frosthaven_assistant/Resource/settings.dart';
 import 'package:frosthaven_assistant/Resource/state/game_state.dart';
 import 'package:frosthaven_assistant/services/network/communication.dart';
@@ -18,6 +21,8 @@ import 'package:frosthaven_assistant/services/network/network.dart';
 import 'package:frosthaven_assistant/services/network/server.dart';
 import 'package:frosthaven_assistant/services/network/superfan/fans.dart';
 import 'package:frosthaven_assistant/services/network/superfan/greeting.dart';
+import 'package:frosthaven_assistant/services/network/superfan/toast.dart';
+import 'package:frosthaven_assistant/services/translation_service.dart';
 import 'package:frosthaven_assistant/services/service_locator.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -515,7 +520,10 @@ void main() {
       client.send(SwerskiGreeting.encode(id: 'dev-1'));
       await client.receive(); // ack
       client.send(SwerskiGreeting.encode(id: 'dev-2'));
-      await client.receive(); // ack
+      // Not `receive()` for the ack: the fans list from the first greeting
+      // can sit in front of it, and the next message is not the second
+      // greeting having been processed.
+      await waitUntilRoster((r) => r.length == 1 && r.single.id == 'dev-2');
 
       expect(_testServer.swerskiClients.map((c) => c.id).toList(),
           equals(['dev-2']));
@@ -942,6 +950,492 @@ void main() {
       expect(getIt<Network>().superFanJoined.value?.name, equals('New name'));
       expect(getIt<Network>().superFanJoined.value?.plays,
           equals(['geminate@2']));
+    });
+  });
+
+  // ── Heart-attack toast relay ───────────────────────────────────────────────
+
+  group('Swerski heart-attack toast', () {
+    Future<void> waitUntilRosterEmpty() async {
+      for (var i = 0; i < 200; i++) {
+        if (_testServer.swerskiClients.isEmpty) return;
+        await Future<void>.delayed(const Duration(milliseconds: 10));
+      }
+      fail('roster never emptied between tests');
+    }
+
+    Future<void> greet(WireClient client, String id) async {
+      client.send(SwerskiGreeting.encode(id: id, name: 'Kitchen phone'));
+      expect(await client.receive(), equals(SwerskiGreeting.encodeAck()));
+    }
+
+    /// The next `toast` line on [client] among up to [messages] messages
+    /// (ack/fans chatter skipped), null if none arrives in time.
+    Future<String?> receiveToast(
+      WireClient client, {
+      int messages = 5,
+      Duration timeout = const Duration(milliseconds: 300),
+    }) async {
+      for (var i = 0; i < messages; i++) {
+        String raw;
+        try {
+          raw = await client.receive(timeout: timeout);
+        } on TimeoutException {
+          return null;
+        }
+        final parsed = SwerskiToast.parse(raw);
+        if (parsed != null) return parsed;
+      }
+      return null;
+    }
+
+    setUp(() async {
+      await waitUntilRosterEmpty();
+      _serverGameState.heartAttackToast.value = '';
+      // A loaded update can leave the host playing turns; the little-attack
+      // detection needs a fresh choosing-initiative baseline.
+      if (_serverGameState.roundState.value != RoundState.chooseInitiative) {
+        _serverGameState.action(NextRoundCommand(
+          gameState: _serverGameState,
+          gameData: getIt<GameData>(),
+          settings: getIt<Settings>(),
+        ));
+      }
+      if (!getIt.isRegistered<TranslationService>()) {
+        getIt.registerSingleton<TranslationService>(TranslationService());
+        addTearDown(() => getIt.unregister<TranslationService>());
+      }
+    });
+
+    /// A hero on the host's table, removed again when the test ends.
+    String addHero(String className) {
+      final was = _serverGameState.currentList
+          .whereType<Character>()
+          .map((c) => c.id)
+          .toSet();
+      _serverGameState
+          .action(AddCharacterCommand(className, 'Frosthaven', null, 1));
+      final id = _serverGameState.currentList
+          .whereType<Character>()
+          .map((c) => c.id)
+          .firstWhere((i) => !was.contains(i));
+      addTearDown(() {
+        final left = _serverGameState.currentList
+            .whereType<Character>()
+            .where((c) => c.id == id)
+            .toList();
+        if (left.isNotEmpty) {
+          _serverGameState.action(
+              RemoveCharacterCommand(left, gameState: _serverGameState));
+        }
+      });
+      return id;
+    }
+
+    /// A copy of [init.state] as a phone would send it: character fields
+    /// changed, the whole snapshot moved to a round state, heroes duplicated,
+    /// or — for [official] — the Swerski keys stripped like an official app
+    /// sends them.
+    String phoneState(
+      StateEnvelope init, {
+      Map<String, Map<String, Object?>> heroes = const {},
+      int? round,
+      Map<String, String> duplicate = const {},
+      Map<String, Object?> copyAs = const {},
+      bool official = false,
+    }) {
+      final json = jsonDecode(init.state) as Map<String, dynamic>;
+      final list = (json['currentList'] as List).cast<Map<String, dynamic>>();
+      for (final dup in duplicate.entries) {
+        final src = list.firstWhere((e) => e['id'] == dup.key);
+        final copy = jsonDecode(jsonEncode(src)) as Map<String, dynamic>;
+        copy['id'] = dup.value;
+        copy.addAll(copyAs);
+        list.add(copy);
+      }
+      for (final entry in list) {
+        final state = entry['characterState'];
+        if (state is! Map<String, dynamic>) continue;
+        final changes = heroes[entry['id']];
+        if (changes != null) state.addAll(changes);
+        if (official) {
+          state.remove('heartAttacks');
+          state.remove('heartAttacksBefore');
+          state.remove('littleHeartAttacks');
+          state.remove('littleHeartAttacksBefore');
+        }
+      }
+      if (round != null) json['roundState'] = round;
+      return jsonEncode(json);
+    }
+
+    /// A client's update at the next index, as the app sends it.
+    void sendPhoneUpdate(
+        WireClient phone, StateEnvelope init, String state) {
+      phone.send(StateEnvelope(
+        index: init.index + 1,
+        description: 'phone action',
+        eventJson: '{"type":"none"}',
+        state: state,
+      ).encode());
+    }
+
+    test('a published line reaches every greeted device and shows here',
+        () async {
+      final phone = await WireClient.connect('127.0.0.1', _serverPort);
+      addTearDown(phone.close);
+      await phone.doInit();
+      await greet(phone, 'toast-1');
+
+      publishHeartAttackLine('Kling: write it down.', _serverGameState);
+
+      expect(await receiveToast(phone), equals('Kling: write it down.'));
+      expect(_serverGameState.heartAttackToast.value,
+          equals('Kling: write it down.'));
+    });
+
+    test('a device that never greeted hears no toast', () async {
+      final official = await WireClient.connect('127.0.0.1', _serverPort);
+      final phone = await WireClient.connect('127.0.0.1', _serverPort);
+      addTearDown(official.close);
+      addTearDown(phone.close);
+      await official.doInit();
+      await phone.doInit();
+      await greet(phone, 'toast-2');
+
+      publishHeartAttackLine('only for the SuperNetwork', _serverGameState);
+
+      expect(await receiveToast(official), isNull);
+      expect(await receiveToast(phone), equals('only for the SuperNetwork'));
+    });
+
+    test('a null or empty line is neither shown nor sent', () async {
+      final phone = await WireClient.connect('127.0.0.1', _serverPort);
+      addTearDown(phone.close);
+      await phone.doInit();
+      await greet(phone, 'toast-3');
+
+      publishHeartAttackLine(null, _serverGameState);
+      publishHeartAttackLine('', _serverGameState);
+
+      expect(_serverGameState.heartAttackToast.value, isEmpty);
+      expect(await receiveToast(phone), isNull);
+    });
+
+    test('a server that never started sends nothing', () {
+      // Fresh Server instance, never started: no socket, so a silent no-op
+      // rather than a crash.
+      expect(() => Server().sendSuperFanToast('line'), returnsNormally);
+    });
+
+    test('a phone on a greeted host does not write its own line', () {
+      final oldClient = getIt<Settings>().client.value;
+      final network = getIt<Network>();
+      final oldGreeted = network.hostGreeted.value;
+      addTearDown(() {
+        getIt<Settings>().client.value = oldClient;
+        network.hostGreeted.value = oldGreeted;
+      });
+      getIt<Settings>().client.value = ClientState.connected;
+      network.hostGreeted.value = true;
+
+      publishHeartAttackLine('the host writes this one', _serverGameState);
+
+      expect(_serverGameState.heartAttackToast.value, isEmpty);
+    });
+
+    test('a phone on an official host still writes its own line', () {
+      final oldClient = getIt<Settings>().client.value;
+      final network = getIt<Network>();
+      final oldGreeted = network.hostGreeted.value;
+      addTearDown(() {
+        getIt<Settings>().client.value = oldClient;
+        network.hostGreeted.value = oldGreeted;
+      });
+      getIt<Settings>().client.value = ClientState.connected;
+      network.hostGreeted.value = false;
+
+      publishHeartAttackLine('my own line, official host', _serverGameState);
+
+      expect(_serverGameState.heartAttackToast.value,
+          equals('my own line, official host'));
+    });
+
+    test('a phone dropping a hero to 0 earns a major line for everyone',
+        () async {
+      final victim = addHero('Blinkblade');
+      addHero('Banner Spear');
+      final phone = await WireClient.connect('127.0.0.1', _serverPort);
+      addTearDown(phone.close);
+      final init = await phone.doInit();
+      await greet(phone, 'ha-major-1');
+
+      sendPhoneUpdate(phone, init,
+          phoneState(init, heroes: {victim: {'health': 0, 'heartAttacks': 1}}));
+
+      final toast = await receiveToast(phone);
+      expect(toast, isNotNull);
+      expect(toast, contains('Blinkblade'));
+      expect(_serverGameState.heartAttackToast.value, equals(toast));
+    });
+
+    test('two heroes down in one update get one line, about the last',
+        () async {
+      // New heroes go on top, so the list ends: Banner Spear, Blinkblade.
+      final addedFirst = addHero('Blinkblade');
+      final addedSecond = addHero('Banner Spear');
+      final phone = await WireClient.connect('127.0.0.1', _serverPort);
+      addTearDown(phone.close);
+      final init = await phone.doInit();
+      await greet(phone, 'ha-major-2');
+
+      sendPhoneUpdate(
+          phone,
+          init,
+          phoneState(init, heroes: {
+            addedFirst: {'health': 0, 'heartAttacks': 1},
+            addedSecond: {'health': 0, 'heartAttacks': 1},
+          }));
+
+      final toast = await receiveToast(phone);
+      // Exactly two heroes: the speaker is the other one, so the line prefix
+      // tells who the victim was — the Blinkblade, last in list order.
+      expect(toast, isNotNull);
+      expect(toast, startsWith('Banner Spear: '));
+      expect(toast, contains('Blinkblade'));
+      expect(await receiveToast(phone), isNull);
+      expect(_serverGameState.heartAttackToast.value, equals(toast));
+    });
+
+    test('a hero resting on the phone earns the recovering line', () async {
+      final hero = addHero('Blinkblade');
+      addHero('Banner Spear');
+      final phone = await WireClient.connect('127.0.0.1', _serverPort);
+      addTearDown(phone.close);
+      final init = await phone.doInit();
+      await greet(phone, 'ha-little-1');
+
+      sendPhoneUpdate(
+          phone,
+          init,
+          phoneState(init,
+              heroes: {hero: {'littleHeartAttacks': 1}},
+              round: RoundState.playTurns.index));
+
+      final toast = await receiveToast(phone);
+      expect(toast, contains('Blinkblade'));
+      expect(toast, endsWith('(long rest).'));
+      expect(_serverGameState.heartAttackToast.value, equals(toast));
+    });
+
+    test('two heroes resting at once get one combined line', () async {
+      final first = addHero('Blinkblade');
+      final second = addHero('Banner Spear');
+      final phone = await WireClient.connect('127.0.0.1', _serverPort);
+      addTearDown(phone.close);
+      final init = await phone.doInit();
+      await greet(phone, 'ha-little-2');
+
+      sendPhoneUpdate(
+          phone,
+          init,
+          phoneState(init,
+              heroes: {
+                first: {'littleHeartAttacks': 1},
+                second: {'littleHeartAttacks': 1},
+              },
+              round: RoundState.playTurns.index));
+
+      final toast = await receiveToast(phone);
+      expect(toast, contains('Blinkblade'));
+      expect(toast, contains('Banner Spear'));
+      expect(toast, contains('each had a little heart attack'));
+      expect(await receiveToast(phone), isNull);
+      expect(_serverGameState.heartAttackToast.value, equals(toast));
+    });
+
+    test('a little heart attack without the round change stays silent',
+        () async {
+      final hero = addHero('Blinkblade');
+      addHero('Banner Spear');
+      final phone = await WireClient.connect('127.0.0.1', _serverPort);
+      addTearDown(phone.close);
+      final init = await phone.doInit();
+      await greet(phone, 'ha-little-3');
+
+      // The Draw did not happen: the host is still choosing initiative.
+      sendPhoneUpdate(phone, init,
+          phoneState(init, heroes: {hero: {'littleHeartAttacks': 1}}));
+
+      expect(await receiveToast(phone), isNull);
+      expect(_serverGameState.heartAttackToast.value, isEmpty);
+    });
+
+    test('a little heart attack beats a major in the same update', () async {
+      final down = addHero('Blinkblade');
+      final resting = addHero('Banner Spear');
+      final phone = await WireClient.connect('127.0.0.1', _serverPort);
+      addTearDown(phone.close);
+      final init = await phone.doInit();
+      await greet(phone, 'ha-little-4');
+
+      sendPhoneUpdate(
+          phone,
+          init,
+          phoneState(init,
+              heroes: {
+                down: {'health': 0, 'heartAttacks': 1},
+                resting: {'littleHeartAttacks': 1},
+              },
+              round: RoundState.playTurns.index));
+
+      // One line only, and it is the recovering one, not a reply.
+      final toast = await receiveToast(phone);
+      expect(toast, contains('Banner Spear'));
+      expect(toast, endsWith('(long rest).'));
+      expect(await receiveToast(phone), isNull);
+      expect(_serverGameState.heartAttackToast.value, equals(toast));
+    });
+
+    test('an update with no heart event stays silent', () async {
+      addHero('Blinkblade');
+      final phone = await WireClient.connect('127.0.0.1', _serverPort);
+      addTearDown(phone.close);
+      final init = await phone.doInit();
+      await greet(phone, 'ha-silent-1');
+
+      sendPhoneUpdate(phone, init, init.state);
+
+      expect(await receiveToast(phone), isNull);
+      expect(_serverGameState.heartAttackToast.value, isEmpty);
+    });
+
+    test('a tally edit on the phone stays silent', () async {
+      final hero = addHero('Blinkblade');
+      addHero('Banner Spear');
+      final phone = await WireClient.connect('127.0.0.1', _serverPort);
+      addTearDown(phone.close);
+      final init = await phone.doInit();
+      await greet(phone, 'ha-silent-2');
+
+      sendPhoneUpdate(phone, init,
+          phoneState(init, heroes: {hero: {'heartAttacks': 1}}));
+
+      expect(await receiveToast(phone), isNull);
+      expect(_serverGameState.heartAttackToast.value, isEmpty);
+    });
+
+    test('an official app state with a hero at 0 stays silent', () async {
+      final victim = addHero('Blinkblade');
+      addHero('Banner Spear');
+      final official = await WireClient.connect('127.0.0.1', _serverPort);
+      final phone = await WireClient.connect('127.0.0.1', _serverPort);
+      addTearDown(official.close);
+      addTearDown(phone.close);
+      final init = await official.doInit();
+      await phone.doInit();
+      await greet(phone, 'ha-silent-3');
+
+      sendPhoneUpdate(official, init,
+          phoneState(init, heroes: {victim: {'health': 0}}, official: true));
+
+      expect(await receiveToast(phone), isNull);
+      expect(_serverGameState.heartAttackToast.value, isEmpty);
+    });
+
+    test('a hero added dead on arrival stays silent', () async {
+      // The new hero is a class the host has never seen: a Character gets
+      // the class id, so copying a table hero's row would BE that hero.
+      final src = addHero('Blinkblade');
+      addHero('Banner Spear');
+      addTearDown(() {
+        final ghosts = _serverGameState.currentList
+            .whereType<Character>()
+            .where((c) => c.id == 'Hail')
+            .toList();
+        if (ghosts.isNotEmpty) {
+          _serverGameState.action(
+              RemoveCharacterCommand(ghosts, gameState: _serverGameState));
+        }
+      });
+      final phone = await WireClient.connect('127.0.0.1', _serverPort);
+      addTearDown(phone.close);
+      final init = await phone.doInit();
+      await greet(phone, 'ha-silent-4');
+
+      sendPhoneUpdate(
+          phone,
+          init,
+          phoneState(init,
+              duplicate: {src: 'ghost-1'},
+              copyAs: {
+                'characterClass': 'Hail',
+                'edition': 'Mercenary Packs',
+              },
+              heroes: {
+                'ghost-1': {'health': 0, 'heartAttacks': 1}
+              }));
+
+      expect(await receiveToast(phone), isNull);
+      expect(_serverGameState.heartAttackToast.value, isEmpty);
+    });
+
+    test('a stale-index update stays silent', () async {
+      final victim = addHero('Blinkblade');
+      addHero('Banner Spear');
+      final phone = await WireClient.connect('127.0.0.1', _serverPort);
+      addTearDown(phone.close);
+      final init = await phone.doInit();
+      await greet(phone, 'ha-silent-5');
+
+      // Same index as the host: rejected, its state is never loaded.
+      phone.send(StateEnvelope(
+        index: init.index,
+        description: 'stale',
+        eventJson: '{"type":"none"}',
+        state: phoneState(init,
+            heroes: {victim: {'health': 0, 'heartAttacks': 1}}),
+      ).encode());
+
+      expect(await receiveToast(phone), isNull);
+      expect(_serverGameState.heartAttackToast.value, isEmpty);
+    });
+
+    test('an ungreeted device receives no line', () async {
+      final victim = addHero('Blinkblade');
+      addHero('Banner Spear');
+      final official = await WireClient.connect('127.0.0.1', _serverPort);
+      final phone = await WireClient.connect('127.0.0.1', _serverPort);
+      addTearDown(official.close);
+      addTearDown(phone.close);
+      final init = await phone.doInit();
+      await official.doInit();
+      await greet(phone, 'ha-greeted-1');
+
+      sendPhoneUpdate(phone, init,
+          phoneState(init, heroes: {victim: {'health': 0, 'heartAttacks': 1}}));
+
+      expect(await receiveToast(official), isNull);
+      expect(await receiveToast(phone), isNotNull);
+    });
+
+    test('host with Heart attacks off still sends, shows nothing itself',
+        () async {
+      final oldOff = getIt<Settings>().heartAttacks.value;
+      getIt<Settings>().heartAttacks.value = false;
+      addTearDown(() => getIt<Settings>().heartAttacks.value = oldOff);
+      final victim = addHero('Blinkblade');
+      addHero('Banner Spear');
+      final phone = await WireClient.connect('127.0.0.1', _serverPort);
+      addTearDown(phone.close);
+      final init = await phone.doInit();
+      await greet(phone, 'ha-off-host');
+
+      sendPhoneUpdate(phone, init,
+          phoneState(init, heroes: {victim: {'health': 0, 'heartAttacks': 1}}));
+
+      expect(await receiveToast(phone), contains('Blinkblade'));
+      expect(_serverGameState.heartAttackToast.value, isEmpty);
     });
   });
 

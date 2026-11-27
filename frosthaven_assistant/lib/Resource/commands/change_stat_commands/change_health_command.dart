@@ -1,9 +1,6 @@
-import 'dart:math';
-
 import '../../../services/service_locator.dart';
-import '../../../services/translation_service.dart';
+import '../../heart_attack_lines.dart';
 import '../../settings.dart';
-import '../../heart_attack.dart';
 import '../../game_event.dart';
 import '../../game_methods.dart';
 import '../../state/game_state.dart';
@@ -58,32 +55,8 @@ class ChangeHealthCommand extends ChangeStatCommand {
     }
     figure.setHeartAttacks(stateAccess, figure.heartAttacks.value + 1);
     // The toast talks about every heart attack, both kinds and all scenarios.
-    _fireReplyToast(character, figure.totalHeartAttacks);
-  }
-
-  /// A deadpan reply line from another character, shown once on this device.
-  /// Skipped quietly when translations are unavailable (e.g. in command tests).
-  void _fireReplyToast(Character victim, int victimCount) {
-    if (!getIt.isRegistered<TranslationService>()) {
-      return;
-    }
-    final translation = getIt<TranslationService>();
-    String name(Character c) => translation.t(c.characterClass.name);
-    final candidates = GameMethods.getCurrentCharactersForState(gameState)
-        .where((c) => c.id != victim.id)
-        .map((c) =>
-            HeartAttackSpeaker(name(c), c.characterState.totalHeartAttacks))
-        .toList();
-    final reply = pickHeartAttackReply(
-      candidates: candidates,
-      victimName: name(victim),
-      victimCount: victimCount,
-      l10n: commandL10n,
-      random: Random(),
-    );
-    if (reply != null) {
-      gameState.heartAttackToast.value = '${reply.speakerName}: ${reply.line}';
-    }
+    publishHeartAttackLine(heartAttackReplyLine(character, gameState),
+        gameState);
   }
 
   /// The [Character] whose body is [figure], or null. Used to tell a real
