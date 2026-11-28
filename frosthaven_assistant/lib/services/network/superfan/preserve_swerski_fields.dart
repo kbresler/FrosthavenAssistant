@@ -61,3 +61,35 @@ String preserveSwerskiFields({
     return incoming;
   }
 }
+
+/// The ids of the characters in a client-sent game-state snapshot whose
+/// `characterState` has no `heartAttacks` key — an official app client never
+/// sends it, a Swerski one always does (even as 0). Judge the raw snapshot,
+/// before [preserveSwerskiFields] adds the keys back. Entries without a
+/// `characterState` or an `id` are not characters; anything that fails to
+/// parse gives an empty set.
+Set<String> characterIdsWithoutHeartAttacks(String incoming) {
+  try {
+    final json = jsonDecode(incoming) as Map<String, dynamic>;
+    final list = json['currentList'];
+    if (list is! List<dynamic>) {
+      return {};
+    }
+    final ids = <String>{};
+    for (final entry in list) {
+      if (entry is! Map<String, dynamic> || entry['id'] is! String) {
+        continue;
+      }
+      final state = entry['characterState'];
+      if (state is! Map<String, dynamic>) {
+        continue;
+      }
+      if (!state.containsKey('heartAttacks')) {
+        ids.add(entry['id'] as String);
+      }
+    }
+    return ids;
+  } catch (_) {
+    return {};
+  }
+}

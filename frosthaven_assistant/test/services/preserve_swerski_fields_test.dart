@@ -90,4 +90,36 @@ void main() {
     );
     expect(result, same(incoming));
   });
+
+  group('characterIdsWithoutHeartAttacks', () {
+    test('characters whose snapshot lacks the key are listed', () {
+      final ids = characterIdsWithoutHeartAttacks(_state([
+        _hero('blinkblade@1'),
+        _hero('geminate@2', const {'health': 3}),
+        _hero('banner_spear@3', hearts),
+      ]));
+      expect(ids, equals({'blinkblade@1', 'geminate@2'}));
+    });
+
+    test('a key present even as 0 means a Swerski client', () {
+      final ids = characterIdsWithoutHeartAttacks(_state([
+        _hero(id, const {'heartAttacks': 0}),
+      ]));
+      expect(ids, isEmpty);
+    });
+
+    test('entries without a characterState or id are skipped', () {
+      final monster = {'id': 'lurker@1', 'monsterState': {'count': 3}};
+      final note = {'id': 'note@1', 'text': 'hello'};
+      final noId = {'characterState': <String, dynamic>{}};
+      final ids =
+          characterIdsWithoutHeartAttacks(_state([monster, note, noId]));
+      expect(ids, isEmpty);
+    });
+
+    test('invalid JSON gives an empty set', () {
+      expect(characterIdsWithoutHeartAttacks('not json'), isEmpty);
+      expect(characterIdsWithoutHeartAttacks('{}'), isEmpty);
+    });
+  });
 }

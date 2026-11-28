@@ -4,6 +4,7 @@ import 'dart:io';
 import 'dart:ui' show Locale;
 
 import 'package:flutter/foundation.dart';
+import 'package:frosthaven_assistant/Resource/commands/count_official_heart_attacks_command.dart';
 import 'package:frosthaven_assistant/Resource/enums.dart';
 import 'package:frosthaven_assistant/Resource/game_event.dart';
 import 'package:frosthaven_assistant/Resource/game_methods.dart';
@@ -200,6 +201,11 @@ class Server extends GameServer {
     // attacks are spotted by comparing the table before and after the load.
     final heartAttackBefore = _heartAttackWatch();
     final roundBefore = _gameState.roundState.value;
+    // An official app never counts heart attacks: judge its raw snapshot
+    // for the characters that lack the keys, before they are restored.
+    final officialIds = _settings.heartAttacks.value
+        ? characterIdsWithoutHeartAttacks(message.data)
+        : const <String>{};
     if (message.index > _gameState.commandDescriptions.length) {
       //invalid: index too high. send correction to clients
       String commandDescription = "";
@@ -222,6 +228,17 @@ class Server extends GameServer {
         incoming: message.data,
         current: _gameState.toString(),
       ));
+      // The host counts for official-app characters before saving, so the
+      // new counts are stored, sent on to the other clients, and covered by
+      // Undo. No toast here: the announcement below spots the written counts.
+      if (officialIds.isNotEmpty) {
+        CountOfficialHeartAttacksCommand(
+          officialIds: officialIds,
+          before: heartAttackBefore,
+          roundBefore: roundBefore,
+          gameState: _gameState,
+        ).execute();
+      }
       // Set event before commandIndex fires so VLB callbacks see it.
       _gameState.lastEvent.value = GameEvent.fromJsonString(message.eventJson);
       _gameState.commandIndex.value = message.index;
