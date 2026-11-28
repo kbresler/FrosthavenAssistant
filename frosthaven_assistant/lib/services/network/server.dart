@@ -35,20 +35,34 @@ class Server extends GameServer {
   List<SwerskiFan>? _lastSentFans;
 
   /// What each device id was last announced as playing. A disconnect does not
-  /// forget it — reconnecting is not joining again — only stopping the server
-  /// does.
+  /// forget it — reconnecting is not joining again. Stopping the server does,
+  /// and so does a device the host has not heard from for the re-announce
+  /// time: its next greeting counts as joining again.
   final Map<String, List<String>> _announcedPlays = {};
+
+  /// When the host last heard from each greeted device id, any message from
+  /// its socket counting. A greeting from a device quiet for
+  /// [_reAnnounceAfter] or more announces it again: a table that comes back
+  /// after a break hears it rejoin.
+  final Map<String, DateTime> _lastHeard = {};
+
+  static const Duration _reAnnounceAfter = Duration(minutes: 5);
+
+  /// Injectable clock: tests move time without waiting for it.
+  final DateTime Function() _clock;
 
   Server(
       {GameState? gameState,
       Communication? communication,
       Connection? connection,
-      Settings? settings})
+      Settings? settings,
+      DateTime Function()? clock})
       : _gameState = gameState ?? getIt<GameState>(),
         _communication = communication ?? getIt<Communication>(),
         _connection = connection ?? getIt<Connection>(),
         _swerskiRoster = SwerskiRoster(connection ?? getIt<Connection>()),
-        _settingsOverride = settings;
+        _settingsOverride = settings,
+        _clock = clock ?? DateTime.now;
 
   Settings get _settings => _settingsOverride ?? getIt<Settings>();
 
@@ -169,6 +183,7 @@ class Server extends GameServer {
     _pinging = false;
     _lastSentFans = null;
     _announcedPlays.clear();
+    _lastHeard.clear();
     // The server calls this at the end of starting and again when stopping.
     // Started: the list starts out holding the host itself, so Settings shows
     // the SuperNetwork block before anyone joins. Stopped: empty.
@@ -316,15 +331,29 @@ class Server extends GameServer {
     if (SwerskiGreeting.isSwerskiMessage(message)) {
       final greeting = SwerskiGreeting.parse(message);
       if (greeting != null) {
+        // A device the host has not heard from for the re-announce time
+        // greets like a newcomer. Forgetting its announcement happens here,
+        // not in _announceJoin: the asking greeting clears the way, so the
+        // picker's greeting that follows announces even with the same plays.
+        final heard = _lastHeard[greeting.id];
+        if (heard != null &&
+            _clock().difference(heard) >= _reAnnounceAfter) {
+          _announcedPlays.remove(greeting.id);
+        }
         _swerskiRoster.greet(greeting, client);
         sendToOnly(SwerskiGreeting.encodeAck(), client);
         _refreshSuperFans(greeter: client);
         if (!greeting.asking) _announceJoin(greeting);
+        _lastHeard[greeting.id] = _clock();
       }
       // Anything else Swerski-prefixed is ignored. Game state and the command
       // index are never touched by Swerski traffic.
       return;
     }
+    // Every other message counts as hearing from the greeted device on this
+    // socket — pongs included — so a long-connected device never looks away.
+    final greetedId = _swerskiRoster.idFor(client);
+    if (greetedId != null) _lastHeard[greetedId] = _clock();
     super.processMessages(message, client);
   }
 
@@ -346,6 +375,7 @@ class Server extends GameServer {
     _swerskiRoster.clear();
     _lastSentFans = null;
     _announcedPlays.clear();
+    _lastHeard.clear();
     getIt<Network>().superFans.value = const [];
   }
 

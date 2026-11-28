@@ -115,6 +115,9 @@ late int _serverPort;
 late GameState _serverGameState;
 late Server _testServer;
 
+// The server's clock: re-announce tests move this instead of waiting.
+DateTime _fakeNow = DateTime.utc(2026);
+
 Future<void> _setUpServer() async {
   TestWidgetsFlutterBinding.ensureInitialized();
   SharedPreferences.setMockInitialValues({});
@@ -139,6 +142,7 @@ Future<void> _setUpServer() async {
     communication: serverComm,
     connection: serverConnection,
     settings: serverSettings,
+    clock: () => _fakeNow,
   );
 
   // Register everything so internal getIt<T>() calls resolve correctly.
@@ -834,6 +838,7 @@ void main() {
 
     setUp(() async {
       await waitUntilRosterEmpty();
+      _fakeNow = DateTime.utc(2026);
       final settings = getIt<Settings>();
       settings.deviceId = 'host-1';
       settings.deviceName.value = 'Table host';
@@ -950,6 +955,113 @@ void main() {
       expect(getIt<Network>().superFanJoined.value?.name, equals('New name'));
       expect(getIt<Network>().superFanJoined.value?.plays,
           equals(['geminate@2']));
+    });
+
+    test('back after 6 minutes away, the same plays announce once again',
+        () async {
+      final first = await WireClient.connect('127.0.0.1', _serverPort);
+      addTearDown(first.close);
+      await first.doInit();
+      await greet(first, 'ann-away', name: 'Patio phone',
+          plays: ['blinkblade@1']);
+      expect(await receiveJoined(first), isNotNull);
+
+      await first.close();
+      await waitUntilRosterEmpty();
+      getIt<Network>().superFanJoined.value = null;
+      _fakeNow = _fakeNow.add(const Duration(minutes: 6));
+
+      final again = await WireClient.connect('127.0.0.1', _serverPort);
+      addTearDown(again.close);
+      await again.doInit();
+      await greet(again, 'ann-away', name: 'Patio phone',
+          plays: ['blinkblade@1']);
+
+      final joined = await receiveJoined(again);
+      expect(joined?.id, equals('ann-away'));
+      expect(getIt<Network>().superFanJoined.value?.name,
+          equals('Patio phone'));
+
+      // Once only: the greeting right after is not another 6-minute gap.
+      getIt<Network>().superFanJoined.value = null;
+      await greet(again, 'ann-away', name: 'Patio phone',
+          plays: ['blinkblade@1']);
+      expect(await receiveJoined(again), isNull);
+      expect(getIt<Network>().superFanJoined.value, isNull);
+    });
+
+    test('back after only 2 minutes quiet is not announced again', () async {
+      final first = await WireClient.connect('127.0.0.1', _serverPort);
+      addTearDown(first.close);
+      await first.doInit();
+      await greet(first, 'ann-2m', name: 'Kitchen tablet',
+          plays: ['blinkblade@1']);
+      expect(await receiveJoined(first), isNotNull);
+
+      await first.close();
+      await waitUntilRosterEmpty();
+      getIt<Network>().superFanJoined.value = null;
+      _fakeNow = _fakeNow.add(const Duration(minutes: 2));
+
+      final again = await WireClient.connect('127.0.0.1', _serverPort);
+      addTearDown(again.close);
+      await again.doInit();
+      await greet(again, 'ann-2m', name: 'Kitchen tablet',
+          plays: ['blinkblade@1']);
+
+      expect(await receiveJoined(again), isNull);
+      expect(getIt<Network>().superFanJoined.value, isNull);
+    });
+
+    test('asking, then the choice after 6 minutes quiet announces', () async {
+      final client = await WireClient.connect('127.0.0.1', _serverPort);
+      addTearDown(client.close);
+      await client.doInit();
+      await greet(client, 'ann-ask6', name: 'Cell phone',
+          plays: ['blinkblade@1']);
+      expect(await receiveJoined(client), isNotNull);
+      getIt<Network>().superFanJoined.value = null;
+
+      // A new app run on the same device: it asks first, and the picker's
+      // greeting only lands after the 6-minute quiet.
+      _fakeNow = _fakeNow.add(const Duration(minutes: 6));
+      await greet(client, 'ann-ask6', name: 'Cell phone', asking: true);
+      expect(await receiveJoined(client), isNull);
+      expect(getIt<Network>().superFanJoined.value, isNull);
+
+      await greet(client, 'ann-ask6', name: 'Cell phone',
+          plays: ['blinkblade@1']);
+      final joined = await receiveJoined(client);
+      expect(joined?.id, equals('ann-ask6'));
+      expect(getIt<Network>().superFanJoined.value?.plays,
+          equals(['blinkblade@1']));
+    });
+
+    test('a connected device that keeps answering pings re-greets quietly',
+        () async {
+      final client = await WireClient.connect('127.0.0.1', _serverPort);
+      addTearDown(client.close);
+      await client.doInit();
+      await greet(client, 'ann-ping', name: 'Tablet',
+          plays: ['blinkblade@1']);
+      expect(await receiveJoined(client), isNotNull);
+      getIt<Network>().superFanJoined.value = null;
+
+      // 6 minutes of fake quiet would announce again — but the host heard a
+      // message from this socket every minute.
+      for (var minute = 0; minute < 6; minute++) {
+        _fakeNow = _fakeNow.add(const Duration(minutes: 1));
+        client.send('ping');
+        // The host's pong confirms it took the message; not a joined one.
+        final pong = await client.receive(
+            timeout: const Duration(milliseconds: 300));
+        expect(pong, isNot(contains('joined')));
+      }
+
+      await greet(client, 'ann-ping', name: 'Tablet',
+          plays: ['blinkblade@1']);
+      expect(await receiveJoined(client), isNull);
+      expect(getIt<Network>().superFanJoined.value, isNull);
     });
   });
 
