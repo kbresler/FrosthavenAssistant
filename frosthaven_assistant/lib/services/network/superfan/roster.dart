@@ -49,6 +49,15 @@ class SwerskiRoster {
     return List.unmodifiable(_devices.values);
   }
 
+  /// The id of the device that greeted on [socket], null if none has. No
+  /// liveness pruning here: the server asks this on every incoming message.
+  String? idFor(Socket socket) {
+    for (final device in _devices.values) {
+      if (device.socket == socket) return device.id;
+    }
+    return null;
+  }
+
   /// Removes the entry that greeted on [socket], if any.
   void drop(Socket socket) {
     _devices.removeWhere((_, d) => d.socket == socket);
