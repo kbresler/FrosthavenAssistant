@@ -7,6 +7,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:frosthaven_assistant/Resource/commands/add_character_command.dart';
 import 'package:frosthaven_assistant/Resource/commands/add_monster_command.dart';
 import 'package:frosthaven_assistant/Resource/commands/add_standee_command.dart';
+import 'package:frosthaven_assistant/Resource/commands/change_name_command.dart';
 import 'package:frosthaven_assistant/Resource/commands/change_stat_commands/change_health_command.dart';
 import 'package:frosthaven_assistant/Resource/commands/draw_command.dart';
 import 'package:frosthaven_assistant/Resource/commands/set_init_command.dart';
@@ -278,6 +279,27 @@ void main() {
       hit(blinkblade);
       expect(gs.heartAttackToast.value, startsWith('Banner Spear: '));
       expect(gs.heartAttackToast.value, contains('Blinkblade'));
+    });
+
+    test('renamed characters are called by their names, not their class', () {
+      final spear = addSpear();
+      ChangeNameCommand('Zorblat', blinkblade.id, gameState: gs).execute();
+      ChangeNameCommand('Quibble', spear.id, gameState: gs).execute();
+      hit(blinkblade);
+      expect(gs.heartAttackToast.value, startsWith('Quibble: '));
+      expect(gs.heartAttackToast.value, contains('Zorblat'));
+      expect(gs.heartAttackToast.value, isNot(contains('Blinkblade')));
+      expect(gs.heartAttackToast.value, isNot(contains('Banner Spear')));
+    });
+
+    testWidgets('the long-rest line uses character names too', (tester) async {
+      await tester.pumpWidget(testApp(const SizedBox()));
+      ChangeNameCommand('Zorblat', blinkblade.id, gameState: gs).execute();
+      rest(blinkblade);
+      draw();
+      expect(gs.heartAttackToast.value, contains('Zorblat'));
+      expect(gs.heartAttackToast.value, isNot(contains('Blinkblade')));
+      await settle(tester);
     });
 
     test('nobody else in the scenario, nobody speaks', () {

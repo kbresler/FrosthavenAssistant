@@ -68,12 +68,12 @@ void main() {
       MessagePanel.instance.cancelTimers();
     });
 
-    testWidgets('a line leaves on its own after 4 s', (tester) async {
+    testWidgets('a line leaves on its own after 8 s', (tester) async {
       await open(tester);
       await showLine();
       await tester.pump();
       await tester.pump();
-      await advance(tester, const Duration(milliseconds: 3900));
+      await advance(tester, const Duration(milliseconds: 7900));
       expect(find.text(line), findsOneWidget);
       await advance(tester, const Duration(milliseconds: 300));
       expect(find.text(line), findsNothing);
@@ -85,7 +85,7 @@ void main() {
       await showLine();
       await tester.pump();
       await tester.pump();
-      await advance(tester, const Duration(seconds: 4, milliseconds: 300));
+      await advance(tester, const Duration(seconds: 8, milliseconds: 300));
       expect(find.text(line), findsNothing);
       await showLine();
       await tester.pump();

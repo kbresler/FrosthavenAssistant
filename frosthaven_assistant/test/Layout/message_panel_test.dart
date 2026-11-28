@@ -98,17 +98,17 @@ void main() {
   });
 
   group('lifetimes', () {
-    testWidgets('a heart-attack line leaves after 4 s', (tester) async {
+    testWidgets('a heart-attack line leaves after 8 s', (tester) async {
       final panel = await open(tester);
       panel.add(const MessageEntry(MessageKind.line, 'Kling: write it down.'));
-      await advance(tester, const Duration(milliseconds: 3900));
+      await advance(tester, const Duration(milliseconds: 7900));
       expect(texts(panel), ['Kling: write it down.']);
       await advance(tester, const Duration(milliseconds: 300));
       expect(panel.entries, isEmpty);
       expect(removals, ['Kling: write it down.:timed']);
     });
 
-    testWidgets('a join banner and a plain toast leave after 4 s too',
+    testWidgets('a join banner and a plain toast leave after 4 s',
         (tester) async {
       final panel = await open(tester);
       panel.add(const MessageEntry(MessageKind.banner, 'banner'));
