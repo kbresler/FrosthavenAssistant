@@ -21,7 +21,7 @@ String? heartAttackReplyLine(Character victim, GameState gameState) {
     return null;
   }
   final translation = getIt<TranslationService>();
-  String name(Character c) => translation.t(c.characterClass.name);
+  String name(Character c) => _characterName(c, translation);
   final candidates = GameMethods.getCurrentCharactersForState(gameState)
       .where((c) => c.id != victim.id)
       .map((c) =>
@@ -47,10 +47,14 @@ String? heartAttackRestingLine(List<Character> resting) {
     return null;
   }
   final translation = getIt<TranslationService>();
-  final names =
-      resting.map((c) => translation.t(c.characterClass.name)).toList();
+  final names = resting.map((c) => _characterName(c, translation)).toList();
   return heartAttackRecoveringLine(names, commandL10n);
 }
+
+/// The character's name as their card shows it: the one the player gave them,
+/// or the class name if they were never renamed.
+String _characterName(Character c, TranslationService translation) =>
+    translation.t(c.characterState.display.value);
 
 /// Shows [line] on this device and, when this device hosts the game, sends it
 /// to every greeted device. Does nothing for a null or empty line, so a

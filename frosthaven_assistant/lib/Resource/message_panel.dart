@@ -31,6 +31,7 @@ class MessageEntry {
 class MessagePanel extends ChangeNotifier {
   static const int maxOnScreen = 3;
   static const Duration _kShort = Duration(seconds: 4);
+  static const Duration _kLine = Duration(seconds: 8);
   static const Duration _kWound = Duration(seconds: 6);
 
   static MessagePanel? _instance;
@@ -158,10 +159,8 @@ class MessagePanel extends ChangeNotifier {
     final duration = switch (entry.kind) {
       MessageKind.wound => _kWound,
       MessageKind.reminder || MessageKind.error => null,
-      MessageKind.line ||
-      MessageKind.banner ||
-      MessageKind.timed =>
-        _kShort,
+      MessageKind.line => _kLine,
+      MessageKind.banner || MessageKind.timed => _kShort,
     };
     final timed = _TimedEntry(entry, duration);
     if (_visible) _arm(timed);
