@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:frosthaven_assistant/Layout/ModifierDeckWidget/modifier_deck_widget.dart';
 import 'package:frosthaven_assistant/Layout/background.dart';
@@ -34,15 +36,102 @@ import 'message_panel.dart';
 import 'view_models/character_amds_view_model.dart';
 import 'view_models/main_scaffold_view_model.dart';
 
-class MainScaffold extends StatelessWidget {
-  const MainScaffold({super.key, this.settings});
+class MainScaffold extends StatefulWidget {
+  const MainScaffold({super.key, this.settings, this.panel});
 
   // injected for testing
   final Settings? settings;
+  final MessagePanel? panel;
+
+  @override
+  State<MainScaffold> createState() => _MainScaffoldState();
+}
+
+/// Swerski: the message panel's timers only run while the board can be
+/// seen: not when a dialog or route covers it, the main drawer is open, or
+/// the app is hidden/paused. Losing focus (inactive) still counts as
+/// visible — a Windows window in the background shows its messages.
+class _MainScaffoldState extends State<MainScaffold>
+    with WidgetsBindingObserver {
+  /// A drawer or route close is only over when its animation ends, but the
+  /// notification fires at its START: the re-check waits this long.
+  static const Duration _kCloseAnimation = Duration(milliseconds: 400);
+
+  bool _drawerOpen = false;
+  bool _appHidden = false;
+  ModalRoute<dynamic>? _route;
+  Timer? _drawerCloseCheck;
+
+  MessagePanel get _panel => widget.panel ?? MessagePanel.instance;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final route = ModalRoute.of(context);
+    if (!identical(route, _route)) {
+      _route?.secondaryAnimation?.removeListener(_onRouteCoveredChanged);
+      _route = route;
+      _route?.secondaryAnimation?.addListener(_onRouteCoveredChanged);
+    }
+    _syncVisibility();
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    _drawerCloseCheck?.cancel();
+    _route?.secondaryAnimation?.removeListener(_onRouteCoveredChanged);
+    // A rebuilt scaffold starts seeing the board again, as does a fresh
+    // panel in tests.
+    _panel.setVisible(true);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    final hidden = state == AppLifecycleState.hidden ||
+        state == AppLifecycleState.paused;
+    if (hidden == _appHidden) return;
+    _appHidden = hidden;
+    _syncVisibility();
+  }
+
+  void _onRouteCoveredChanged() => _syncVisibility();
+
+  void _onDrawerChanged(bool open) {
+    _drawerCloseCheck?.cancel();
+    if (open) {
+      _drawerOpen = true;
+      _syncVisibility();
+      return;
+    }
+    // Fires when the close animation starts: the board is only seen again
+    // when it ends.
+    _drawerCloseCheck = Timer(_kCloseAnimation, () {
+      _drawerOpen = false;
+      _syncVisibility();
+    });
+  }
+
+  void _syncVisibility() {
+    // On a pop, isCurrent flips back at the START of the close animation;
+    // the route's secondaryAnimation still runs until it is dismissed.
+    final closing = (_route?.secondaryAnimation?.status ??
+            AnimationStatus.dismissed) !=
+        AnimationStatus.dismissed;
+    final covered = _route != null && (!_route!.isCurrent || closing);
+    _panel.setVisible(!_drawerOpen && !_appHidden && !covered);
+  }
 
   @override
   Widget build(BuildContext context) {
-    final settings = this.settings ?? getIt<Settings>();
+    final settings = widget.settings ?? getIt<Settings>();
 
     return ValueListenableBuilder<double>(
         valueListenable: settings.userScalingBars,
@@ -53,6 +142,7 @@ class MainScaffold extends StatelessWidget {
               maintainBottomViewPadding: true,
               child: Scaffold(
                   resizeToAvoidBottomInset: false,
+                  onDrawerChanged: _onDrawerChanged,
                   bottomNavigationBar: RepaintBoundary(child: BottomBar()),
                   appBar: PreferredSize(
                       preferredSize: Size(double.infinity,

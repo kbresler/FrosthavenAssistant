@@ -52,7 +52,25 @@ class MessagePanel extends ChangeNotifier {
   /// `toastMessage` hangs off this.
   void Function(MessageEntry entry, bool timedOut)? onRemoved;
 
+  bool _visible = true;
+
   final List<_TimedEntry> _entries = [];
+
+  /// Tells the panel whether the board can be seen (a dialog, the drawer or
+  /// a backgrounded app means it cannot). While hidden no timer runs and
+  /// none starts — adds and in-place replacements included; on becoming
+  /// visible every timed entry gets its full time again.
+  void setVisible(bool visible) {
+    if (_visible == visible) return;
+    _visible = visible;
+    if (!visible) {
+      cancelTimers();
+      return;
+    }
+    for (final e in _entries) {
+      _arm(e);
+    }
+  }
 
   /// Oldest first; the panel draws newest at the bottom.
   List<MessageEntry> get entries =>
@@ -145,11 +163,15 @@ class MessagePanel extends ChangeNotifier {
       MessageKind.timed =>
         _kShort,
     };
-    final timed = _TimedEntry(entry);
-    if (duration != null) {
-      timed.timer = Timer(duration, () => _expire(timed));
-    }
+    final timed = _TimedEntry(entry, duration);
+    if (_visible) _arm(timed);
     return timed;
+  }
+
+  void _arm(_TimedEntry e) {
+    final duration = e.duration;
+    if (duration == null) return;
+    e.timer = Timer(duration, () => _expire(e));
   }
 
   /// An entry's own timer firing: the entry may already be gone (tapped,
@@ -162,9 +184,12 @@ class MessagePanel extends ChangeNotifier {
 }
 
 class _TimedEntry {
-  _TimedEntry(this.entry);
+  _TimedEntry(this.entry, this.duration);
 
   final MessageEntry entry;
+
+  /// How long this entry lives; null for the kinds that stay until removed.
+  final Duration? duration;
   Timer? timer;
 }
 
