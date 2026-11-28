@@ -12,6 +12,7 @@ import 'package:frosthaven_assistant/Resource/commands/remove_character_command.
 import 'package:frosthaven_assistant/Resource/commands/set_level_command.dart';
 import 'package:frosthaven_assistant/Resource/enums.dart';
 import 'package:frosthaven_assistant/Resource/game_data.dart';
+import 'package:frosthaven_assistant/Resource/game_methods.dart';
 import 'package:frosthaven_assistant/Resource/heart_attack_lines.dart';
 import 'package:frosthaven_assistant/Resource/settings.dart';
 import 'package:frosthaven_assistant/Resource/state/game_state.dart';
@@ -1325,7 +1326,10 @@ void main() {
       expect(_serverGameState.heartAttackToast.value, isEmpty);
     });
 
-    test('an official app state with a hero at 0 stays silent', () async {
+    // Superseded by host-side counting: an official-app hero dropped to 0
+    // now earns a counted major and a line (see the group below).
+    test('an official app state with a hero at 0 is counted by the host',
+        () async {
       final victim = addHero('Blinkblade');
       addHero('Banner Spear');
       final official = await WireClient.connect('127.0.0.1', _serverPort);
@@ -1339,8 +1343,16 @@ void main() {
       sendPhoneUpdate(official, init,
           phoneState(init, heroes: {victim: {'health': 0}}, official: true));
 
-      expect(await receiveToast(phone), isNull);
-      expect(_serverGameState.heartAttackToast.value, isEmpty);
+      expect(await receiveToast(phone), contains('Blinkblade'));
+      expect(_serverGameState.heartAttackToast.value, contains('Blinkblade'));
+      expect(
+          _serverGameState.currentList
+              .whereType<Character>()
+              .firstWhere((c) => c.id == victim)
+              .characterState
+              .heartAttacks
+              .value,
+          equals(1));
     });
 
     test('a hero added dead on arrival stays silent', () async {
@@ -1436,6 +1448,346 @@ void main() {
 
       expect(await receiveToast(phone), contains('Blinkblade'));
       expect(_serverGameState.heartAttackToast.value, isEmpty);
+    });
+  });
+
+  // ── Official-app heart attacks counted by the host ─────────────────────────
+
+  group('Official-app heart attacks counted by the host', () {
+    Future<void> waitUntilRosterEmpty() async {
+      for (var i = 0; i < 200; i++) {
+        if (_testServer.swerskiClients.isEmpty) return;
+        await Future<void>.delayed(const Duration(milliseconds: 10));
+      }
+      fail('roster never emptied between tests');
+    }
+
+    Future<void> greet(WireClient client, String id) async {
+      client.send(SwerskiGreeting.encode(id: id, name: 'Kitchen phone'));
+      expect(await client.receive(), equals(SwerskiGreeting.encodeAck()));
+    }
+
+    Future<String?> receiveToast(
+      WireClient client, {
+      int messages = 5,
+      Duration timeout = const Duration(milliseconds: 300),
+    }) async {
+      for (var i = 0; i < messages; i++) {
+        String raw;
+        try {
+          raw = await client.receive(timeout: timeout);
+        } on TimeoutException {
+          return null;
+        }
+        final parsed = SwerskiToast.parse(raw);
+        if (parsed != null) return parsed;
+      }
+      return null;
+    }
+
+    setUp(() async {
+      await waitUntilRosterEmpty();
+      _serverGameState.heartAttackToast.value = '';
+      // The little-attack detection needs a fresh choosing-initiative
+      // baseline; an earlier test may have left the host playing turns.
+      if (_serverGameState.roundState.value != RoundState.chooseInitiative) {
+        _serverGameState.action(NextRoundCommand(
+          gameState: _serverGameState,
+          gameData: getIt<GameData>(),
+          settings: getIt<Settings>(),
+        ));
+      }
+      if (!getIt.isRegistered<TranslationService>()) {
+        getIt.registerSingleton<TranslationService>(TranslationService());
+        addTearDown(() => getIt.unregister<TranslationService>());
+      }
+    });
+
+    String addHero(String className) {
+      final was = _serverGameState.currentList
+          .whereType<Character>()
+          .map((c) => c.id)
+          .toSet();
+      _serverGameState
+          .action(AddCharacterCommand(className, 'Frosthaven', null, 1));
+      final id = _serverGameState.currentList
+          .whereType<Character>()
+          .map((c) => c.id)
+          .firstWhere((i) => !was.contains(i));
+      addTearDown(() {
+        final left = _serverGameState.currentList
+            .whereType<Character>()
+            .where((c) => c.id == id)
+            .toList();
+        if (left.isNotEmpty) {
+          _serverGameState.action(
+              RemoveCharacterCommand(left, gameState: _serverGameState));
+        }
+      });
+      return id;
+    }
+
+    String phoneState(
+      StateEnvelope init, {
+      Map<String, Map<String, Object?>> heroes = const {},
+      int? round,
+      Map<String, String> duplicate = const {},
+      Map<String, Object?> copyAs = const {},
+      bool official = false,
+    }) {
+      final json = jsonDecode(init.state) as Map<String, dynamic>;
+      final list = (json['currentList'] as List).cast<Map<String, dynamic>>();
+      for (final dup in duplicate.entries) {
+        final src = list.firstWhere((e) => e['id'] == dup.key);
+        final copy = jsonDecode(jsonEncode(src)) as Map<String, dynamic>;
+        copy['id'] = dup.value;
+        copy.addAll(copyAs);
+        list.add(copy);
+      }
+      for (final entry in list) {
+        final state = entry['characterState'];
+        if (state is! Map<String, dynamic>) continue;
+        final changes = heroes[entry['id']];
+        if (changes != null) state.addAll(changes);
+        if (official) {
+          state.remove('heartAttacks');
+          state.remove('heartAttacksBefore');
+          state.remove('littleHeartAttacks');
+          state.remove('littleHeartAttacksBefore');
+        }
+      }
+      if (round != null) json['roundState'] = round;
+      return jsonEncode(json);
+    }
+
+    void sendPhoneUpdate(
+        WireClient phone, StateEnvelope init, String state) {
+      phone.send(StateEnvelope(
+        index: init.index + 1,
+        description: 'phone action',
+        eventJson: '{"type":"none"}',
+        state: state,
+      ).encode());
+    }
+
+    Character hostHero(String id) => _serverGameState.currentList
+        .whereType<Character>()
+        .firstWhere((c) => c.id == id);
+    int hostMajor(String id) => hostHero(id).characterState.heartAttacks.value;
+    int hostLittle(String id) =>
+        hostHero(id).characterState.littleHeartAttacks.value;
+
+    test('an official update dropping a hero to 0 is counted, saved and sent',
+        () async {
+      final victim = addHero('Blinkblade');
+      addHero('Banner Spear');
+      final official = await WireClient.connect('127.0.0.1', _serverPort);
+      final phone = await WireClient.connect('127.0.0.1', _serverPort);
+      addTearDown(official.close);
+      addTearDown(phone.close);
+      final init = await official.doInit();
+      await phone.doInit();
+      await greet(phone, 'off-major-1');
+
+      sendPhoneUpdate(official, init,
+          phoneState(init, heroes: {victim: {'health': 0}}, official: true));
+
+      // The greeted phone witnesses both the forwarded state (written with
+      // the host's new count, since the command ran before the save) and
+      // the announced line.
+      StateEnvelope? forwarded;
+      String? toast;
+      for (var i = 0; i < 5 && (forwarded == null || toast == null); i++) {
+        final raw = await phone.receive(timeout: const Duration(seconds: 2));
+        final line = SwerskiToast.parse(raw);
+        if (line != null) {
+          toast = line;
+          continue;
+        }
+        final envelope = StateEnvelope.tryDecode(raw);
+        if (envelope != null && envelope.index == init.index + 1) {
+          forwarded = envelope;
+        }
+      }
+      expect(toast, contains('Blinkblade'));
+      expect(_serverGameState.heartAttackToast.value, equals(toast));
+      expect(hostMajor(victim), equals(1));
+      final sentJson = jsonDecode(forwarded!.state) as Map<String, dynamic>;
+      final sentHero = (sentJson['currentList'] as List<dynamic>)
+          .whereType<Map<String, dynamic>>()
+          .firstWhere((e) => e['id'] == victim);
+      expect(
+          (sentHero['characterState'] as Map<String, dynamic>)['heartAttacks'],
+          equals(1),
+          reason: 'the state sent on to the other clients carries the count');
+    });
+
+    test('a host Undo removes the counted heart attack', () async {
+      final victim = addHero('Blinkblade');
+      addHero('Banner Spear');
+      final official = await WireClient.connect('127.0.0.1', _serverPort);
+      addTearDown(official.close);
+      final init = await official.doInit();
+
+      sendPhoneUpdate(official, init,
+          phoneState(init, heroes: {victim: {'health': 0}}, official: true));
+      await Future<void>.delayed(const Duration(milliseconds: 100));
+      expect(hostMajor(victim), equals(1));
+
+      _testServer.undoState();
+      expect(hostMajor(victim), equals(0),
+          reason: 'the count was written before the save, so Undo takes it '
+              'back with everything else from that update');
+    });
+
+    test('a Swerski phone that counts itself is not counted again', () async {
+      final victim = addHero('Blinkblade');
+      addHero('Banner Spear');
+      final phone = await WireClient.connect('127.0.0.1', _serverPort);
+      addTearDown(phone.close);
+      final init = await phone.doInit();
+      await greet(phone, 'off-no-dbl');
+
+      // The Swerski snapshot carries its own heartAttacks: 1 — the host
+      // sees the key and leaves the counting to the phone.
+      sendPhoneUpdate(phone, init,
+          phoneState(init, heroes: {victim: {'health': 0, 'heartAttacks': 1}}));
+
+      expect(await receiveToast(phone), contains('Blinkblade'));
+      expect(hostMajor(victim), equals(1));
+    });
+
+    test('host with Heart attacks off does not count for the official app',
+        () async {
+      final oldOff = getIt<Settings>().heartAttacks.value;
+      getIt<Settings>().heartAttacks.value = false;
+      addTearDown(() => getIt<Settings>().heartAttacks.value = oldOff);
+      final victim = addHero('Blinkblade');
+      addHero('Banner Spear');
+      final official = await WireClient.connect('127.0.0.1', _serverPort);
+      final phone = await WireClient.connect('127.0.0.1', _serverPort);
+      addTearDown(official.close);
+      addTearDown(phone.close);
+      final init = await official.doInit();
+      await phone.doInit();
+      await greet(phone, 'off-off-1');
+
+      sendPhoneUpdate(official, init,
+          phoneState(init, heroes: {victim: {'health': 0}}, official: true));
+
+      expect(await receiveToast(phone), isNull);
+      expect(_serverGameState.heartAttackToast.value, isEmpty);
+      expect(hostMajor(victim), equals(0));
+    });
+
+    test('an official long rest through a Draw earns the little count',
+        () async {
+      final hero = addHero('Blinkblade');
+      addHero('Banner Spear');
+      final official = await WireClient.connect('127.0.0.1', _serverPort);
+      final phone = await WireClient.connect('127.0.0.1', _serverPort);
+      addTearDown(official.close);
+      addTearDown(phone.close);
+      final init = await official.doInit();
+      await phone.doInit();
+      await greet(phone, 'off-little-1');
+
+      sendPhoneUpdate(
+          official,
+          init,
+          phoneState(init,
+              heroes: {hero: {'initiative': 99}},
+              round: RoundState.playTurns.index,
+              official: true));
+
+      final toast = await receiveToast(phone);
+      expect(toast, contains('Blinkblade'));
+      expect(toast, endsWith('(long rest).'));
+      expect(hostLittle(hero), equals(1));
+      expect(hostMajor(hero), equals(0));
+    });
+
+    test('an official long rest without a Draw earns nothing', () async {
+      final hero = addHero('Blinkblade');
+      addHero('Banner Spear');
+      final official = await WireClient.connect('127.0.0.1', _serverPort);
+      final phone = await WireClient.connect('127.0.0.1', _serverPort);
+      addTearDown(official.close);
+      addTearDown(phone.close);
+      final init = await official.doInit();
+      await phone.doInit();
+      await greet(phone, 'off-little-2');
+
+      // The Draw did not happen: the round is still choosing initiative.
+      sendPhoneUpdate(official, init,
+          phoneState(init,
+              heroes: {hero: {'initiative': 99}}, official: true));
+
+      expect(await receiveToast(phone), isNull);
+      expect(_serverGameState.heartAttackToast.value, isEmpty);
+      expect(hostLittle(hero), equals(0));
+    });
+
+    test('an official Objective dropped to 0 and a hero added dead gain '
+        'nothing', () async {
+      final src = addHero('Blinkblade');
+      addHero('Banner Spear');
+      _serverGameState.action(AddCharacterCommand('Objective', 'na', 'guard', 1));
+      final objectiveId = _serverGameState.currentList
+          .whereType<Character>()
+          .firstWhere(
+              (c) => GameMethods.isObjectiveOrEscort(c.characterClass))
+          .id;
+      addTearDown(() {
+        final gone = _serverGameState.currentList
+            .whereType<Character>()
+            .where((c) => c.id == 'Hail' || c.id == objectiveId)
+            .toList();
+        if (gone.isNotEmpty) {
+          _serverGameState.action(
+              RemoveCharacterCommand(gone, gameState: _serverGameState));
+        }
+      });
+      final official = await WireClient.connect('127.0.0.1', _serverPort);
+      final phone = await WireClient.connect('127.0.0.1', _serverPort);
+      addTearDown(official.close);
+      addTearDown(phone.close);
+      final init = await official.doInit();
+      await phone.doInit();
+      await greet(phone, 'off-excluded-1');
+
+      // A copy of the table's Blinkblade under a fresh id: the host has
+      // never seen it, so its fall is nobody's heart attack. The Objective
+      // is on the before table but not watched. Both dropped to 0, so a
+      // wrong count would show up here.
+      sendPhoneUpdate(
+          official,
+          init,
+          phoneState(
+              init,
+              duplicate: {src: 'ghost-1'},
+              copyAs: {'characterClass': 'Hail', 'edition': 'Mercenary Packs'},
+              heroes: {
+                'ghost-1': {'health': 0},
+                objectiveId: {'health': 0},
+              },
+              official: true));
+
+      expect(await receiveToast(phone), isNull);
+      expect(_serverGameState.heartAttackToast.value, isEmpty);
+      // A loaded Character takes its id from its class, not the JSON 'id':
+      // the duplicate is the Hail on the host's table. firstWhere asserts
+      // it landed at all.
+      expect(
+          _serverGameState.currentList
+              .whereType<Character>()
+              .firstWhere((c) => c.id == 'Hail')
+              .characterState
+              .heartAttacks
+              .value,
+          equals(0));
+      expect(hostMajor(objectiveId), equals(0));
+      expect(hostMajor(src), equals(0));
     });
   });
 
