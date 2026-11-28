@@ -9,6 +9,14 @@ rootProject.layout.buildDirectory.set(file("../build"))
 subprojects {
     project.layout.buildDirectory.set(file("${rootProject.layout.buildDirectory.get()}/${project.name}"))
 }
+// flutter_keyboard_visibility 6.0.0 still compiles against Android 31, which newer AndroidX libraries reject.
+subprojects {
+    afterEvaluate {
+        if (project.name == "flutter_keyboard_visibility") {
+            project.android.compileSdk = 36
+        }
+    }
+}
 subprojects {
     project.evaluationDependsOn(":app")
 }

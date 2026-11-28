@@ -21,10 +21,6 @@ android {
         targetCompatibility = JavaVersion.VERSION_17
     }
 
-    kotlinOptions {
-        jvmTarget = JavaVersion.VERSION_17
-    }
-
     defaultConfig {
         applicationId = "com.tarmslitaren.frosthaven_assistant.swerski"
         // You can update the following values to match your application needs.
@@ -48,6 +44,12 @@ android {
         release {
             signingConfig = signingConfigs.release
         }
+    }
+}
+
+kotlin {
+    compilerOptions {
+        jvmTarget = org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17
     }
 }
 
